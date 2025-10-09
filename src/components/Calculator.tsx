@@ -26,14 +26,11 @@ const Calculator = () => {
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
   
   // Other costs
-  const [freight, setFreight] = useState<number>(700);
   const [customsDuty, setCustomsDuty] = useState<number>(5);
   const [vat, setVat] = useState<number>(21);
-  const [speditorFee, setSpeditorFee] = useState<number>(150);
-  const [homologationFee, setHomologationFee] = useState<number>(77);
-  const [translation, setTranslation] = useState<number>(105);
-  const [portAgentFee, setPortAgentFee] = useState<number>(930);
-  const [miscellaneous, setMiscellaneous] = useState<number>(50);
+  const [translationPages, setTranslationPages] = useState<number>(3);
+  const [homologationFee, setHomologationFee] = useState<number>(250);
+  const [miscellaneous, setMiscellaneous] = useState<number>(0);
   
   // Other settings
   const [scenario, setScenario] = useState<string>("physical");
@@ -72,9 +69,25 @@ const Calculator = () => {
 
   // Calculations (per car)
   const carPrice = getCarPriceEUR();
+  
+  // Freight (3500 USD per container -> EUR, split by cars)
+  const totalFreightUSD = 3500;
+  const freightPerContainerEUR = totalFreightUSD * usdToEurRate;
+  const freight = freightPerContainerEUR / numberOfCars;
+  
+  // Port & Agent Fees (420 base + 250 per car)
+  const portAgentFee = (420 + 250 * numberOfCars) / numberOfCars;
+  
+  // Documents & Services
+  const translation = translationPages * 35;
+  const speditorFee = 150 * 1.21; // 150 € + 21% VAT = 181.50 €
+  
+  // Taxes
   const cif = carPrice + freight;
   const customs = cif * customsDuty / 100;
   const vatAmount = (cif + customs) * vat / 100;
+  
+  // Totals (per car)
   const totalCostWithoutCar = customs + vatAmount + speditorFee + homologationFee + translation + portAgentFee + miscellaneous;
   const finalCost = carPrice + totalCostWithoutCar;
   const vatRefund = scenario === "company" ? vatAmount : 0;
@@ -202,10 +215,14 @@ const Calculator = () => {
                     id="numberOfCars"
                     type="number"
                     min="1"
+                    max="4"
                     value={numberOfCars}
-                    onChange={e => setNumberOfCars(Math.max(1, Number(e.target.value)))}
+                    onChange={e => setNumberOfCars(Math.max(1, Math.min(4, Number(e.target.value))))}
                     className="mt-1.5"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    1–4 cars per container
+                  </p>
                 </div>
 
                 <div className="border-t pt-4">
@@ -248,15 +265,18 @@ const Calculator = () => {
 
                 <div>
                   <Label htmlFor="freight" className="text-sm font-medium">
-                    Freight (€)
+                    Freight (€/car)
                   </Label>
                   <Input
                     id="freight"
-                    type="number"
-                    value={freight}
-                    onChange={e => setFreight(Number(e.target.value))}
-                    className="mt-1.5"
+                    type="text"
+                    value={freight.toFixed(2)}
+                    readOnly
+                    className="mt-1.5 bg-secondary/50 cursor-not-allowed"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Container total: 3500 USD ≈ {freightPerContainerEUR.toFixed(2)} € (at current USD→EUR rate)
+                  </p>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
@@ -294,11 +314,14 @@ const Calculator = () => {
                     </Label>
                     <Input
                       id="speditorFee"
-                      type="number"
-                      value={speditorFee}
-                      onChange={e => setSpeditorFee(Number(e.target.value))}
-                      className="mt-1.5"
+                      type="text"
+                      value={speditorFee.toFixed(2)}
+                      readOnly
+                      className="mt-1.5 bg-secondary/50 cursor-not-allowed"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      150 € + 21% VAT = 181.50 €/car
+                    </p>
                   </div>
 
                   <div>
@@ -312,34 +335,44 @@ const Calculator = () => {
                       onChange={e => setHomologationFee(Number(e.target.value))}
                       className="mt-1.5"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Editable (default 250 €)
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="translation" className="text-sm font-medium">
-                      Translation (€)
+                    <Label htmlFor="translationPages" className="text-sm font-medium">
+                      Translation Pages
                     </Label>
                     <Input
-                      id="translation"
+                      id="translationPages"
                       type="number"
-                      value={translation}
-                      onChange={e => setTranslation(Number(e.target.value))}
+                      min="0"
+                      value={translationPages}
+                      onChange={e => setTranslationPages(Math.max(0, Number(e.target.value)))}
                       className="mt-1.5"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      35 € per page = {translation.toFixed(2)} € total
+                    </p>
                   </div>
 
                   <div>
                     <Label htmlFor="portAgentFee" className="text-sm font-medium">
-                      Port & Agent Fee (€)
+                      Port & Agent Fee (€/car)
                     </Label>
                     <Input
                       id="portAgentFee"
-                      type="number"
-                      value={portAgentFee}
-                      onChange={e => setPortAgentFee(Number(e.target.value))}
-                      className="mt-1.5"
+                      type="text"
+                      value={portAgentFee.toFixed(2)}
+                      readOnly
+                      className="mt-1.5 bg-secondary/50 cursor-not-allowed"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      420 base + 250 per car
+                    </p>
                   </div>
                 </div>
 
