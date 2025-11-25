@@ -15,6 +15,7 @@ interface UseCarImportCalculationsProps {
   miscellaneous: number;
   scenario: "physical" | "company";
   numberOfCars: number;
+  containerType: "20ft" | "40ft";
 }
 
 export const useCarImportCalculations = (
@@ -33,6 +34,7 @@ export const useCarImportCalculations = (
     miscellaneous,
     scenario,
     numberOfCars,
+    containerType,
   } = props;
 
   return useMemo(() => {
@@ -48,9 +50,12 @@ export const useCarImportCalculations = (
 
     const carPrice = getCarPriceEUR();
 
-    // Freight (3500 USD per container -> EUR, split by cars)
-    const totalFreightUSD = 3500;
-    const freightPerContainerEUR = totalFreightUSD * usdToEurRate;
+    // Freight: depends on container type
+    // 20ft: USD 3150 + EUR 350 (max 2 cars)
+    // 40ft: USD 4150 + EUR 420 (max 4 cars)
+    const freightUSD = containerType === "20ft" ? 3150 : 4150;
+    const localCostsEUR = containerType === "20ft" ? 350 : 420;
+    const freightPerContainerEUR = freightUSD * usdToEurRate + localCostsEUR;
     const freight = freightPerContainerEUR / numberOfCars;
 
     // Port & Agent Fees (420 base + 250 per car)
@@ -116,5 +121,6 @@ export const useCarImportCalculations = (
     miscellaneous,
     scenario,
     numberOfCars,
+    containerType,
   ]);
 };
