@@ -32,6 +32,7 @@ const Calculator = () => {
   // Other settings
   const [scenario, setScenario] = useState<"physical" | "company">("physical");
   const [numberOfCars, setNumberOfCars] = useState<number>(1);
+  const [containerType, setContainerType] = useState<"20ft" | "40ft">("40ft");
 
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
@@ -47,6 +48,7 @@ const Calculator = () => {
     miscellaneous,
     scenario,
     numberOfCars,
+    containerType,
   });
 
   // Fetch exchange rates
@@ -101,34 +103,36 @@ const Calculator = () => {
               setUsdToEurRate={setUsdToEurRate}
             />
 
-            <VehicleDetailsSection
-              scenario={scenario}
-              setScenario={setScenario}
-              numberOfCars={numberOfCars}
-              setNumberOfCars={setNumberOfCars}
-              useKRW={useKRW}
-              setUseKRW={setUseKRW}
-              carPriceKRW={carPriceKRW}
-              setCarPriceKRW={setCarPriceKRW}
-              carPriceEUR={carPriceEUR}
-              setCarPriceEUR={setCarPriceEUR}
-              krwToEurRate={krwToEurRate}
-              freight={results.freight}
-              freightPerContainerEUR={results.freightPerContainerEUR}
-              customsDuty={customsDuty}
-              setCustomsDuty={setCustomsDuty}
-              vat={vat}
-              setVat={setVat}
-              speditorFee={results.speditorFee}
-              homologationFee={homologationFee}
-              setHomologationFee={setHomologationFee}
-              translationPages={translationPages}
-              setTranslationPages={setTranslationPages}
-              translation={results.translation}
-              portAgentFee={results.portAgentFee}
-              miscellaneous={miscellaneous}
-              setMiscellaneous={setMiscellaneous}
-            />
+          <VehicleDetailsSection
+            scenario={scenario}
+            setScenario={setScenario}
+            numberOfCars={numberOfCars}
+            setNumberOfCars={setNumberOfCars}
+            containerType={containerType}
+            setContainerType={setContainerType}
+            useKRW={useKRW}
+            setUseKRW={setUseKRW}
+            carPriceKRW={carPriceKRW}
+            setCarPriceKRW={setCarPriceKRW}
+            carPriceEUR={carPriceEUR}
+            setCarPriceEUR={setCarPriceEUR}
+            krwToEurRate={krwToEurRate}
+            freight={results.freight}
+            freightPerContainerEUR={results.freightPerContainerEUR}
+            customsDuty={customsDuty}
+            setCustomsDuty={setCustomsDuty}
+            vat={vat}
+            setVat={setVat}
+            speditorFee={results.speditorFee}
+            homologationFee={homologationFee}
+            setHomologationFee={setHomologationFee}
+            translationPages={translationPages}
+            setTranslationPages={setTranslationPages}
+            translation={results.translation}
+            portAgentFee={results.portAgentFee}
+            miscellaneous={miscellaneous}
+            setMiscellaneous={setMiscellaneous}
+          />
           </div>
 
           {/* Results */}

@@ -10,6 +10,8 @@ interface VehicleDetailsSectionProps {
   setScenario: (value: "physical" | "company") => void;
   numberOfCars: number;
   setNumberOfCars: (value: number) => void;
+  containerType: "20ft" | "40ft";
+  setContainerType: (value: "20ft" | "40ft") => void;
   useKRW: boolean;
   setUseKRW: (value: boolean) => void;
   carPriceKRW: string;
@@ -39,6 +41,8 @@ export const VehicleDetailsSection = ({
   setScenario,
   numberOfCars,
   setNumberOfCars,
+  containerType,
+  setContainerType,
   useKRW,
   setUseKRW,
   carPriceKRW,
@@ -85,6 +89,25 @@ export const VehicleDetailsSection = ({
         </div>
 
         <div>
+          <Label htmlFor="containerType" className="text-sm font-medium">
+            Container Type
+          </Label>
+          <Select value={containerType} onValueChange={(value) => {
+            setContainerType(value as "20ft" | "40ft");
+            const maxCars = value === "20ft" ? 2 : 4;
+            if (numberOfCars > maxCars) setNumberOfCars(maxCars);
+          }}>
+            <SelectTrigger id="containerType" className="mt-1.5">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="20ft">20ft (max 2 cars)</SelectItem>
+              <SelectItem value="40ft">40ft (max 4 cars)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div>
           <Label htmlFor="numberOfCars" className="text-sm font-medium">
             Number of Cars
           </Label>
@@ -92,12 +115,17 @@ export const VehicleDetailsSection = ({
             id="numberOfCars"
             type="number"
             min="1"
-            max="4"
+            max={containerType === "20ft" ? 2 : 4}
             value={numberOfCars}
-            onChange={(e) => setNumberOfCars(Math.max(1, Math.min(4, Number(e.target.value))))}
+            onChange={(e) => {
+              const maxCars = containerType === "20ft" ? 2 : 4;
+              setNumberOfCars(Math.max(1, Math.min(maxCars, Number(e.target.value))));
+            }}
             className="mt-1.5"
           />
-          <p className="text-xs text-muted-foreground mt-1">1–4 cars per container</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {containerType === "20ft" ? "1–2 cars per 20ft container" : "1–4 cars per 40ft container"}
+          </p>
         </div>
 
         <div className="border-t pt-4">
@@ -146,7 +174,10 @@ export const VehicleDetailsSection = ({
             className="mt-1.5 bg-secondary/50 cursor-not-allowed"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Container total: 3500 USD ≈ {freightPerContainerEUR.toFixed(2)} € (at current USD→EUR rate)
+            {containerType === "20ft" 
+              ? `20ft: USD 3150 + EUR 350 ≈ ${freightPerContainerEUR.toFixed(2)} € total`
+              : `40ft: USD 4150 + EUR 420 ≈ ${freightPerContainerEUR.toFixed(2)} € total`
+            }
           </p>
         </div>
 

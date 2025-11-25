@@ -13,6 +13,7 @@ export interface CalculatorState {
   miscellaneous: number;
   scenario: "physical" | "company";
   numberOfCars: number;
+  containerType: "20ft" | "40ft";
 }
 
 export interface CalculationResults {
