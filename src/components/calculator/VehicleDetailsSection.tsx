@@ -113,18 +113,18 @@ export const VehicleDetailsSection = ({
           </Label>
           <Input
             id="numberOfCars"
-            type="number"
-            min="1"
-            max={containerType === "20ft" ? 2 : 4}
+            type="text"
+            inputMode="numeric"
             value={numberOfCars}
             onChange={(e) => {
-              const maxCars = containerType === "20ft" ? 2 : 4;
-              setNumberOfCars(Math.max(1, Math.min(maxCars, Number(e.target.value))));
+              const cleaned = e.target.value.replace(/[^\d]/g, '');
+              const num = cleaned === '' ? 1 : Math.max(1, Number(cleaned));
+              setNumberOfCars(num);
             }}
             className="mt-1.5"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            {containerType === "20ft" ? "1–2 cars per 20ft container" : "1–4 cars per 40ft container"}
+            {containerType === "20ft" ? "Recommended: 1–2 cars per 20ft container" : "Recommended: 1–4 cars per 40ft container"}
           </p>
         </div>
 
@@ -153,9 +153,14 @@ export const VehicleDetailsSection = ({
               </Label>
               <Input
                 id="carPriceEUR"
-                type="number"
-                value={carPriceEUR}
-                onChange={(e) => setCarPriceEUR(Number(e.target.value))}
+                type="text"
+                inputMode="decimal"
+                value={carPriceEUR > 0 ? carPriceEUR.toLocaleString('en-US') : ''}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/[^\d]/g, '');
+                  setCarPriceEUR(cleaned === '' ? 0 : Number(cleaned));
+                }}
+                placeholder="0"
                 className="mt-1.5"
               />
             </div>
