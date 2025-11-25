@@ -118,13 +118,19 @@ export const VehicleDetailsSection = ({
             value={numberOfCars}
             onChange={(e) => {
               const cleaned = e.target.value.replace(/[^\d]/g, '');
-              const num = cleaned === '' ? 1 : Math.max(1, Number(cleaned));
-              setNumberOfCars(num);
+              if (cleaned === '') {
+                setNumberOfCars(1);
+                return;
+              }
+              const num = Number(cleaned);
+              const maxCars = containerType === "20ft" ? 2 : 4;
+              setNumberOfCars(Math.max(1, Math.min(maxCars, num)));
             }}
+            onFocus={(e) => e.target.select()}
             className="mt-1.5"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            {containerType === "20ft" ? "Recommended: 1–2 cars per 20ft container" : "Recommended: 1–4 cars per 40ft container"}
+            {containerType === "20ft" ? "1–2 cars per 20ft container" : "1–4 cars per 40ft container"}
           </p>
         </div>
 
