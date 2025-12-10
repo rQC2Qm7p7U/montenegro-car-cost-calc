@@ -2,8 +2,6 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import KRWInput from "@/components/KRWInput";
 
 interface VehicleDetailsSectionProps {
   scenario: "physical" | "company";
@@ -12,14 +10,7 @@ interface VehicleDetailsSectionProps {
   setNumberOfCars: (value: number) => void;
   containerType: "20ft" | "40ft";
   setContainerType: (value: "20ft" | "40ft") => void;
-  useKRW: boolean;
-  setUseKRW: (value: boolean) => void;
-  carPriceKRW: string;
-  setCarPriceKRW: (value: string) => void;
-  carPriceEUR: number;
-  setCarPriceEUR: (value: number) => void;
-  krwToEurRate: number;
-  freight: number;
+  freightPerCar: number;
   freightPerContainerEUR: number;
   customsDuty: number;
   setCustomsDuty: (value: number) => void;
@@ -30,8 +21,8 @@ interface VehicleDetailsSectionProps {
   setHomologationFee: (value: number) => void;
   translationPages: number;
   setTranslationPages: (value: number) => void;
-  translation: number;
-  portAgentFee: number;
+  translationPerCar: number;
+  portAgentFeePerCar: number;
   miscellaneous: number;
   setMiscellaneous: (value: number) => void;
 }
@@ -43,14 +34,7 @@ export const VehicleDetailsSection = ({
   setNumberOfCars,
   containerType,
   setContainerType,
-  useKRW,
-  setUseKRW,
-  carPriceKRW,
-  setCarPriceKRW,
-  carPriceEUR,
-  setCarPriceEUR,
-  krwToEurRate,
-  freight,
+  freightPerCar,
   freightPerContainerEUR,
   customsDuty,
   setCustomsDuty,
@@ -61,15 +45,19 @@ export const VehicleDetailsSection = ({
   setHomologationFee,
   translationPages,
   setTranslationPages,
-  translation,
-  portAgentFee,
+  translationPerCar,
+  portAgentFeePerCar,
   miscellaneous,
   setMiscellaneous,
 }: VehicleDetailsSectionProps) => {
+  const containerInfo = containerType === "20ft" 
+    ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }
+    : { maxCars: 4, freightUSD: 4150, localEUR: 420 };
+
   return (
     <Card className="p-6 shadow-card transition-smooth hover:shadow-hover animate-fade-in" style={{ animationDelay: "0.1s" }}>
       <h2 className="text-2xl font-semibold text-foreground mb-6">
-        Vehicle Details
+        Import Settings
       </h2>
 
       <div className="space-y-4">
@@ -101,8 +89,8 @@ export const VehicleDetailsSection = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="20ft">20ft (max 2 cars)</SelectItem>
-              <SelectItem value="40ft">40ft (max 4 cars)</SelectItem>
+              <SelectItem value="20ft">20ft (max 2 cars) - USD 3,150 + EUR 350</SelectItem>
+              <SelectItem value="40ft">40ft HC (max 4 cars) - USD 4,150 + EUR 420</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -123,72 +111,29 @@ export const VehicleDetailsSection = ({
                 return;
               }
               const num = Number(cleaned);
-              const maxCars = containerType === "20ft" ? 2 : 4;
-              setNumberOfCars(Math.max(1, Math.min(maxCars, num)));
+              setNumberOfCars(Math.max(1, Math.min(containerInfo.maxCars, num)));
             }}
             onFocus={(e) => e.target.select()}
             className="mt-1.5"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            {containerType === "20ft" ? "1–2 cars per 20ft container" : "1–4 cars per 40ft container"}
+            1–{containerInfo.maxCars} cars per {containerType} container
           </p>
         </div>
 
         <div className="border-t pt-4">
-          <div className="flex items-center gap-2 mb-4">
-            <Switch
-              id="useKRW"
-              checked={useKRW}
-              onCheckedChange={(checked) => {
-                setUseKRW(checked);
-                if (checked) setCarPriceEUR(0);
-                else setCarPriceKRW("");
-              }}
-            />
-            <Label htmlFor="useKRW" className="text-sm font-medium cursor-pointer">
-              Use KRW instead of EUR
-            </Label>
-          </div>
-
-          {useKRW ? (
-            <KRWInput value={carPriceKRW} onChange={setCarPriceKRW} krwToEurRate={krwToEurRate} />
-          ) : (
-            <div>
-              <Label htmlFor="carPriceEUR" className="text-sm font-medium">
-                Car Price (€)
-              </Label>
-              <Input
-                id="carPriceEUR"
-                type="text"
-                inputMode="decimal"
-                value={carPriceEUR > 0 ? carPriceEUR.toLocaleString('en-US') : ''}
-                onChange={(e) => {
-                  const cleaned = e.target.value.replace(/[^\d]/g, '');
-                  setCarPriceEUR(cleaned === '' ? 0 : Number(cleaned));
-                }}
-                placeholder="0"
-                className="mt-1.5"
-              />
-            </div>
-          )}
-        </div>
-
-        <div>
           <Label htmlFor="freight" className="text-sm font-medium">
             Freight (€/car)
           </Label>
           <Input
             id="freight"
             type="text"
-            value={freight.toFixed(2)}
+            value={freightPerCar.toFixed(2)}
             readOnly
             className="mt-1.5 bg-secondary/50 cursor-not-allowed"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            {containerType === "20ft" 
-              ? `20ft: USD 3150 + EUR 350 ≈ ${freightPerContainerEUR.toFixed(2)} € total`
-              : `40ft: USD 4150 + EUR 420 ≈ ${freightPerContainerEUR.toFixed(2)} € total`
-            }
+            {containerType}: USD {containerInfo.freightUSD.toLocaleString()} + EUR {containerInfo.localEUR} = {freightPerContainerEUR.toFixed(2)} € total ÷ {numberOfCars} = {freightPerCar.toFixed(2)} €/car
           </p>
         </div>
 
@@ -223,7 +168,7 @@ export const VehicleDetailsSection = ({
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="speditorFee" className="text-sm font-medium">
-              Speditor Fee (€)
+              Speditor Fee (€/car)
             </Label>
             <Input
               id="speditorFee"
@@ -237,7 +182,7 @@ export const VehicleDetailsSection = ({
 
           <div>
             <Label htmlFor="homologationFee" className="text-sm font-medium">
-              Homologation Fee (€)
+              Homologation Fee (€/car)
             </Label>
             <Input
               id="homologationFee"
@@ -246,7 +191,6 @@ export const VehicleDetailsSection = ({
               onChange={(e) => setHomologationFee(Number(e.target.value))}
               className="mt-1.5"
             />
-            <p className="text-xs text-muted-foreground mt-1">Editable (default 250 €)</p>
           </div>
         </div>
 
@@ -263,7 +207,7 @@ export const VehicleDetailsSection = ({
               onChange={(e) => setTranslationPages(Math.max(0, Number(e.target.value)))}
               className="mt-1.5"
             />
-            <p className="text-xs text-muted-foreground mt-1">35 € per page = {translation.toFixed(2)} € total</p>
+            <p className="text-xs text-muted-foreground mt-1">35 € × {translationPages} pages = {translationPerCar.toFixed(2)} €/car</p>
           </div>
 
           <div>
@@ -273,17 +217,17 @@ export const VehicleDetailsSection = ({
             <Input
               id="portAgentFee"
               type="text"
-              value={portAgentFee.toFixed(2)}
+              value={portAgentFeePerCar.toFixed(2)}
               readOnly
               className="mt-1.5 bg-secondary/50 cursor-not-allowed"
             />
-            <p className="text-xs text-muted-foreground mt-1">420 base + 250 per car</p>
+            <p className="text-xs text-muted-foreground mt-1">(420 ÷ {numberOfCars}) + 250 = {portAgentFeePerCar.toFixed(2)} €/car</p>
           </div>
         </div>
 
         <div>
           <Label htmlFor="miscellaneous" className="text-sm font-medium">
-            Miscellaneous (€)
+            Miscellaneous (€/car)
           </Label>
           <Input
             id="miscellaneous"
