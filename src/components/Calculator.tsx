@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calculator as CalcIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
@@ -6,15 +6,14 @@ import { fetchExchangeRates } from "@/utils/currency";
 import { useCarImportCalculations } from "@/hooks/useCarImportCalculations";
 import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
+import { CarPricesSection } from "./calculator/CarPricesSection";
 import { CalculationResults } from "./calculator/CalculationResults";
 
 const Calculator = () => {
   const { toast } = useToast();
 
-  // Price inputs
-  const [carPriceEUR, setCarPriceEUR] = useState<number>(0);
-  const [carPriceKRW, setCarPriceKRW] = useState<string>("");
-  const [useKRW, setUseKRW] = useState<boolean>(false);
+  // Car prices (array of EUR values)
+  const [carPrices, setCarPrices] = useState<number[]>([0]);
 
   // Currency rates
   const [krwToEurRate, setKrwToEurRate] = useState<number>(0.00068);
@@ -34,11 +33,23 @@ const Calculator = () => {
   const [numberOfCars, setNumberOfCars] = useState<number>(1);
   const [containerType, setContainerType] = useState<"20ft" | "40ft">("40ft");
 
+  // Update carPrices array when numberOfCars changes
+  useEffect(() => {
+    setCarPrices((prev) => {
+      if (prev.length < numberOfCars) {
+        // Add new entries with 0 price
+        return [...prev, ...Array(numberOfCars - prev.length).fill(0)];
+      } else if (prev.length > numberOfCars) {
+        // Trim excess entries
+        return prev.slice(0, numberOfCars);
+      }
+      return prev;
+    });
+  }, [numberOfCars]);
+
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
-    carPriceEUR,
-    carPriceKRW,
-    useKRW,
+    carPrices,
     krwToEurRate,
     usdToEurRate,
     customsDuty,
@@ -60,7 +71,7 @@ const Calculator = () => {
       setUsdToEurRate(rates.usdToEur);
       toast({
         title: "Rates updated",
-        description: `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW`,
+        description: `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
       });
     } else {
       toast({
@@ -85,7 +96,7 @@ const Calculator = () => {
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-2">Montenegro Car Import Calculator</h1>
           <p className="text-muted-foreground text-lg">
-            Calculate the total cost of importing your vehicle (KRW → EUR)
+            Calculate the total cost of importing vehicles with different prices
           </p>
         </div>
 
@@ -103,36 +114,35 @@ const Calculator = () => {
               setUsdToEurRate={setUsdToEurRate}
             />
 
-          <VehicleDetailsSection
-            scenario={scenario}
-            setScenario={setScenario}
-            numberOfCars={numberOfCars}
-            setNumberOfCars={setNumberOfCars}
-            containerType={containerType}
-            setContainerType={setContainerType}
-            useKRW={useKRW}
-            setUseKRW={setUseKRW}
-            carPriceKRW={carPriceKRW}
-            setCarPriceKRW={setCarPriceKRW}
-            carPriceEUR={carPriceEUR}
-            setCarPriceEUR={setCarPriceEUR}
-            krwToEurRate={krwToEurRate}
-            freight={results.freight}
-            freightPerContainerEUR={results.freightPerContainerEUR}
-            customsDuty={customsDuty}
-            setCustomsDuty={setCustomsDuty}
-            vat={vat}
-            setVat={setVat}
-            speditorFee={results.speditorFee}
-            homologationFee={homologationFee}
-            setHomologationFee={setHomologationFee}
-            translationPages={translationPages}
-            setTranslationPages={setTranslationPages}
-            translation={results.translation}
-            portAgentFee={results.portAgentFee}
-            miscellaneous={miscellaneous}
-            setMiscellaneous={setMiscellaneous}
-          />
+            <VehicleDetailsSection
+              scenario={scenario}
+              setScenario={setScenario}
+              numberOfCars={numberOfCars}
+              setNumberOfCars={setNumberOfCars}
+              containerType={containerType}
+              setContainerType={setContainerType}
+              freightPerCar={results.freightPerCar}
+              freightPerContainerEUR={results.freightPerContainerEUR}
+              customsDuty={customsDuty}
+              setCustomsDuty={setCustomsDuty}
+              vat={vat}
+              setVat={setVat}
+              speditorFee={results.speditorFee}
+              homologationFee={homologationFee}
+              setHomologationFee={setHomologationFee}
+              translationPages={translationPages}
+              setTranslationPages={setTranslationPages}
+              translationPerCar={results.translationPerCar}
+              portAgentFeePerCar={results.portAgentFeePerCar}
+              miscellaneous={miscellaneous}
+              setMiscellaneous={setMiscellaneous}
+            />
+
+            <CarPricesSection
+              numberOfCars={numberOfCars}
+              carPrices={carPrices}
+              setCarPrices={setCarPrices}
+            />
           </div>
 
           {/* Results */}

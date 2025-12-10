@@ -1,6 +1,5 @@
 export interface CalculatorState {
-  carPriceEUR: number;
-  carPriceKRW: string;
+  carPrices: number[]; // Array of car prices in EUR
   useKRW: boolean;
   krwToEurRate: number;
   usdToEurRate: number;
@@ -16,24 +15,41 @@ export interface CalculatorState {
   containerType: "20ft" | "40ft";
 }
 
-export interface CalculationResults {
+export interface CarCalculationResult {
+  carIndex: number;
   carPrice: number;
-  freight: number;
-  freightPerContainerEUR: number;
-  portAgentFee: number;
-  translation: number;
-  speditorFee: number;
+  freightPerCar: number;
   cif: number;
   customs: number;
   vatAmount: number;
+  portAgentFeePerCar: number;
+  translationPerCar: number;
+  speditorFee: number;
+  homologationFee: number;
+  miscellaneous: number;
   totalCostWithoutCar: number;
   finalCost: number;
   vatRefund: number;
   netCostForCompany: number;
+}
+
+export interface CalculationResults {
+  // Container-level calculations
+  freightPerContainerEUR: number;
+  freightPerCar: number;
+  portAgentFeePerCar: number;
+  translationPerCar: number;
+  speditorFee: number;
+
+  // Per-car breakdown
+  carResults: CarCalculationResult[];
+
+  // Container totals
+  totalCarPrices: number;
   totalCIF: number;
   totalCustoms: number;
   totalVAT: number;
-  totalCostWithoutCarAll: number;
+  totalCostWithoutCars: number;
   totalFinalCost: number;
   totalVATRefund: number;
   totalNetCostForCompany: number;
