@@ -72,7 +72,7 @@ export const useCarImportCalculations = (
 
     // Totals (per car)
     const totalCostWithoutCar =
-      customs + vatAmount + speditorFee + homologationFee + translation + portAgentFee + miscellaneous;
+      freight + customs + vatAmount + speditorFee + homologationFee + translation + portAgentFee + miscellaneous;
     const finalCost = carPrice + totalCostWithoutCar;
     const vatRefund = scenario === "company" ? vatAmount : 0;
     const netCostForCompany = scenario === "company" ? finalCost - vatRefund : finalCost;
