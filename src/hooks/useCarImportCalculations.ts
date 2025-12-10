@@ -61,8 +61,8 @@ export const useCarImportCalculations = (
     // Port & Agent Fees (420 base + 250 per car)
     const portAgentFee = (420 + 250 * numberOfCars) / numberOfCars;
 
-    // Documents & Services
-    const translation = translationPages * 35;
+    // Documents & Services (per car)
+    const translation = (translationPages * 35) / numberOfCars;
     const speditorFee = 150 * 1.21; // 150 € + 21% VAT = 181.50 €
 
     // Taxes
