@@ -142,6 +142,7 @@ const Calculator = () => {
               numberOfCars={numberOfCars}
               carPrices={carPrices}
               setCarPrices={setCarPrices}
+              krwToEurRate={krwToEurRate}
             />
           </div>
 
