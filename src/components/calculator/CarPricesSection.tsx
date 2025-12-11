@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Copy, Info } from "lucide-react";
+import { Copy, Info, Car, CheckCircle2 } from "lucide-react";
 import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/currency";
 
 interface CarPricesSectionProps {
@@ -63,15 +63,26 @@ export const CarPricesSection = ({
     }
   };
 
+  const completedCount = carPrices.filter(p => p > 0).length;
+
   return (
-    <Card className="p-6 shadow-card transition-smooth hover:shadow-hover animate-fade-in" style={{ animationDelay: "0.15s" }}>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-foreground">
-          Car Prices
-        </h2>
+    <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card" style={{ animationDelay: "0.15s" }}>
+      {/* Header with icon */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
+          <Car className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-lg font-semibold text-foreground">
+            Vehicle Prices
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            {completedCount}/{numberOfCars} entered
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <Select value={currencyMode} onValueChange={(v) => setCurrencyMode(v as CurrencyMode)}>
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[90px] h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -79,39 +90,36 @@ export const CarPricesSection = ({
               <SelectItem value="krw">KRW ₩</SelectItem>
             </SelectContent>
           </Select>
-          {numberOfCars > 1 && carPrices[0] > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={setAllToSamePrice}
-              className="gap-2"
-            >
-              <Copy className="w-4 h-4" />
-              Copy #1
-            </Button>
-          )}
         </div>
       </div>
 
+      {/* Progress bar */}
+      <div className="progress-bar mb-4">
+        <div 
+          className="progress-bar-fill" 
+          style={{ width: `${(completedCount / numberOfCars) * 100}%` }}
+        />
+      </div>
+
       {currencyMode === "krw" && (
-        <div className="flex items-center gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-2 mb-4 p-3 bg-muted/30 rounded-lg border border-border/50">
           <Switch
             id="rawKRWMode"
             checked={rawKRWMode}
             onCheckedChange={setRawKRWMode}
           />
-          <Label htmlFor="rawKRWMode" className="text-sm text-muted-foreground cursor-pointer">
-            Full KRW (no 만원 shorthand)
+          <Label htmlFor="rawKRWMode" className="text-sm text-muted-foreground cursor-pointer flex-1">
+            Full KRW (no 만원)
           </Label>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="w-4 h-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent side="left">
                 <p className="max-w-xs text-sm">
-                  Korean shorthand: '만원' means ×10,000.<br />
-                  Example: 2,280 = 22,800,000 KRW
+                  Korean shorthand: '만원' = ×10,000<br />
+                  Example: 2,280 → 22,800,000 KRW
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -119,50 +127,86 @@ export const CarPricesSection = ({
         </div>
       )}
 
-      <div className="space-y-4">
-        {Array.from({ length: numberOfCars }).map((_, index) => (
-          <div key={index} className="space-y-1">
-            <Label htmlFor={`carPrice${index}`} className="text-sm font-medium">
-              Car #{index + 1} Price ({currencyMode === "eur" ? "€" : rawKRWMode ? "KRW" : "만원"})
-            </Label>
-            
-            {currencyMode === "eur" ? (
-              <Input
-                id={`carPrice${index}`}
-                type="text"
-                inputMode="decimal"
-                value={carPrices[index] > 0 ? carPrices[index].toLocaleString("en-US") : ""}
-                onChange={(e) => handlePriceChange(index, e.target.value)}
-                onFocus={(e) => e.target.select()}
-                placeholder="0"
-                className="mt-1"
-              />
-            ) : (
-              <div className="space-y-1">
+      {/* Copy button for multiple cars */}
+      {numberOfCars > 1 && carPrices[0] > 0 && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={setAllToSamePrice}
+          className="w-full mb-4 gap-2 h-9"
+        >
+          <Copy className="w-4 h-4" />
+          Apply Car #1 price to all
+        </Button>
+      )}
+
+      <div className="space-y-3">
+        {Array.from({ length: numberOfCars }).map((_, index) => {
+          const hasPrice = carPrices[index] > 0;
+          
+          return (
+            <div 
+              key={index} 
+              className={`relative p-3 rounded-lg border transition-all duration-200 ${
+                hasPrice 
+                  ? 'bg-primary/5 border-primary/20' 
+                  : 'bg-muted/30 border-border/50 hover:border-border'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor={`carPrice${index}`} className="text-sm font-medium flex items-center gap-2">
+                  Car #{index + 1}
+                  {hasPrice && (
+                    <CheckCircle2 className="w-4 h-4 text-primary" />
+                  )}
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  {currencyMode === "eur" ? "€" : rawKRWMode ? "KRW" : "만원"}
+                </span>
+              </div>
+              
+              {currencyMode === "eur" ? (
                 <Input
                   id={`carPrice${index}`}
                   type="text"
-                  value={krwInputValues[index] || ""}
-                  onChange={(e) => handleKRWChange(index, e.target.value)}
+                  inputMode="decimal"
+                  value={carPrices[index] > 0 ? carPrices[index].toLocaleString("en-US") : ""}
+                  onChange={(e) => handlePriceChange(index, e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  placeholder={rawKRWMode ? "22800000" : "2280"}
-                  className="mt-1"
+                  placeholder="Enter price..."
+                  className="input-focus-ring bg-background/50"
                 />
-                {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (
-                  <div className="text-xs text-muted-foreground space-y-0.5 pl-1">
-                    <div>{formatKRW(rawKRWMode ? parseKRWInput(krwInputValues[index]) : parseKRWInput(krwInputValues[index]) * 10000)} KRW</div>
-                    <div className="text-primary font-medium">≈ €{formatEUR(carPrices[index])}</div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+              ) : (
+                <div className="space-y-2">
+                  <Input
+                    id={`carPrice${index}`}
+                    type="text"
+                    value={krwInputValues[index] || ""}
+                    onChange={(e) => handleKRWChange(index, e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder={rawKRWMode ? "22,800,000" : "2,280"}
+                    className="input-focus-ring bg-background/50"
+                  />
+                  {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (
+                    <div className="flex items-center justify-between text-xs px-1">
+                      <span className="text-muted-foreground">
+                        {formatKRW(rawKRWMode ? parseKRWInput(krwInputValues[index]) : parseKRWInput(krwInputValues[index]) * 10000)} KRW
+                      </span>
+                      <span className="text-primary font-semibold">
+                        ≈ €{formatEUR(carPrices[index])}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {numberOfCars > 1 && (
-        <p className="text-xs text-muted-foreground mt-4">
-          Each car can have a different price. Container costs are split equally.
+        <p className="text-xs text-muted-foreground mt-4 text-center">
+          Container costs are split equally between vehicles
         </p>
       )}
     </Card>
