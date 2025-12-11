@@ -126,4 +126,32 @@ All colors MUST be HSL.
   .gradient-primary {
     background: var(--gradient-primary);
   }
+
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-sm border border-border/50;
+  }
+
+  .input-focus-ring {
+    @apply focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all duration-200;
+  }
+
+  .section-divider {
+    @apply border-t border-border/50 pt-4 mt-4;
+  }
+
+  .badge-info {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary;
+  }
+
+  .badge-success {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/10 text-green-600 dark:text-green-400;
+  }
+
+  .progress-bar {
+    @apply h-1 bg-muted rounded-full overflow-hidden;
+  }
+
+  .progress-bar-fill {
+    @apply h-full bg-primary rounded-full transition-all duration-500 ease-out;
+  }
 }

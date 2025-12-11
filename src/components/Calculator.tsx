@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calculator as CalcIcon } from "lucide-react";
+import { Ship, Calculator as CalcIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates } from "@/utils/currency";
@@ -8,6 +8,7 @@ import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
 import { CarPricesSection } from "./calculator/CarPricesSection";
 import { CalculationResults } from "./calculator/CalculationResults";
+import { Badge } from "@/components/ui/badge";
 
 const Calculator = () => {
   const { toast } = useToast();
@@ -83,26 +84,48 @@ const Calculator = () => {
     setIsLoadingRates(false);
   };
 
+  // Calculate completion percentage for car prices
+  const completedCars = carPrices.filter(p => p > 0).length;
+  const completionPercent = Math.round((completedCars / numberOfCars) * 100);
+
   return (
-    <div className="min-h-screen bg-background py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-6 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl shadow-card hover-scale">
-              <CalcIcon className="w-8 h-8 text-primary-foreground" />
+        <header className="text-center mb-8 animate-fade-in">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="relative inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg hover:scale-105 transition-transform duration-300">
+              <Ship className="w-7 h-7 text-primary-foreground" />
             </div>
             <ThemeToggle />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-2">Montenegro Car Import Calculator</h1>
-          <p className="text-muted-foreground text-lg">
-            Calculate the total cost of importing vehicles with different prices
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
+            Montenegro Car Import
+          </h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Calculate import costs for vehicles from Korea
           </p>
-        </div>
+          
+          {/* Quick status badges */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+            <Badge variant="outline" className="gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              {containerType} Container
+            </Badge>
+            <Badge variant="outline" className="gap-1.5">
+              {numberOfCars} {numberOfCars === 1 ? 'Car' : 'Cars'}
+            </Badge>
+            {completedCars > 0 && (
+              <Badge variant="secondary" className="gap-1.5 badge-success">
+                {completedCars}/{numberOfCars} priced
+              </Badge>
+            )}
+          </div>
+        </header>
 
-        <div className="grid lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
           {/* Input Form */}
-          <div className="space-y-6">
+          <div className="space-y-5 order-2 lg:order-1">
             <CurrencyRatesSection
               autoUpdateFX={autoUpdateFX}
               setAutoUpdateFX={setAutoUpdateFX}
@@ -146,16 +169,19 @@ const Calculator = () => {
             />
           </div>
 
-          {/* Results */}
-          <CalculationResults
-            results={results}
-            numberOfCars={numberOfCars}
-            scenario={scenario}
-            customsDuty={customsDuty}
-            vat={vat}
-            krwToEurRate={krwToEurRate}
-            usdToEurRate={usdToEurRate}
-          />
+          {/* Results - Sticky on desktop */}
+          <div className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
+            <CalculationResults
+              results={results}
+              numberOfCars={numberOfCars}
+              scenario={scenario}
+              customsDuty={customsDuty}
+              vat={vat}
+              krwToEurRate={krwToEurRate}
+              usdToEurRate={usdToEurRate}
+              completionPercent={completionPercent}
+            />
+          </div>
         </div>
       </div>
     </div>

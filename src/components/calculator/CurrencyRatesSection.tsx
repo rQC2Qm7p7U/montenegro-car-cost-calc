@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Coins } from "lucide-react";
 
 interface CurrencyRatesSectionProps {
   autoUpdateFX: boolean;
@@ -27,39 +27,38 @@ export const CurrencyRatesSection = ({
   setUsdToEurRate,
 }: CurrencyRatesSectionProps) => {
   return (
-    <Card className="p-6 shadow-card transition-smooth hover:shadow-hover animate-fade-in">
-      <h2 className="text-2xl font-semibold text-foreground mb-6">
-        Currency & Rates
-      </h2>
+    <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
+      {/* Header with icon */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
+            <Coins className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Exchange Rates
+            </h2>
+            <p className="text-xs text-muted-foreground">KRW & USD to EUR</p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onRefreshRates}
+          disabled={isLoadingRates}
+          className="h-9 gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoadingRates ? 'animate-spin' : ''}`} />
+          {isLoadingRates ? 'Loading...' : 'Update'}
+        </Button>
+      </div>
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Switch
-              id="autoUpdateFX"
-              checked={autoUpdateFX}
-              onCheckedChange={setAutoUpdateFX}
-            />
-            <Label htmlFor="autoUpdateFX" className="text-sm font-medium cursor-pointer">
-              Auto-update FX rates
-            </Label>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefreshRates}
-            disabled={isLoadingRates}
-            className="hover-scale"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingRates ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="animate-fade-in" style={{ animationDelay: "0.1s" }}>
-            <Label htmlFor="krwToEur" className="text-sm font-medium">
-              KRW → EUR Rate
+        {/* Rate cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+            <Label htmlFor="krwToEur" className="text-xs font-medium text-muted-foreground block mb-2">
+              KRW → EUR
             </Label>
             <Input
               id="krwToEur"
@@ -67,16 +66,16 @@ export const CurrencyRatesSection = ({
               step="0.000001"
               value={krwToEurRate}
               onChange={(e) => setKrwToEurRate(Number(e.target.value))}
-              className="mt-1.5"
+              className="input-focus-ring bg-background/50 h-9 text-sm"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              1 EUR = {(1 / krwToEurRate).toFixed(2)} KRW
+            <p className="text-xs text-primary font-medium mt-2">
+              1€ = ₩{(1 / krwToEurRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </p>
           </div>
 
-          <div className="animate-fade-in" style={{ animationDelay: "0.2s" }}>
-            <Label htmlFor="usdToEur" className="text-sm font-medium">
-              USD → EUR Rate
+          <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+            <Label htmlFor="usdToEur" className="text-xs font-medium text-muted-foreground block mb-2">
+              USD → EUR
             </Label>
             <Input
               id="usdToEur"
@@ -84,12 +83,24 @@ export const CurrencyRatesSection = ({
               step="0.01"
               value={usdToEurRate}
               onChange={(e) => setUsdToEurRate(Number(e.target.value))}
-              className="mt-1.5"
+              className="input-focus-ring bg-background/50 h-9 text-sm"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              1 USD = {usdToEurRate.toFixed(4)} EUR
+            <p className="text-xs text-primary font-medium mt-2">
+              $1 = €{usdToEurRate.toFixed(4)}
             </p>
           </div>
+        </div>
+
+        {/* Auto-update toggle */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/30">
+          <Label htmlFor="autoUpdateFX" className="text-sm text-muted-foreground cursor-pointer">
+            Auto-update on load
+          </Label>
+          <Switch
+            id="autoUpdateFX"
+            checked={autoUpdateFX}
+            onCheckedChange={setAutoUpdateFX}
+          />
         </div>
       </div>
     </Card>
