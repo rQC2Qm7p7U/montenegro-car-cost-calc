@@ -54,33 +54,30 @@ export const CurrencyRatesSection = ({
     : "No data";
 
   return (
-    <Card className="p-3 sm:p-4 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
-      <div className="flex items-center justify-between gap-2">
+    <Card className="p-3 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
             <Coins className="w-4 h-4 text-primary/90" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-foreground">Exchange Rates</h2>
-            <p className="text-[11px] text-muted-foreground">Updated automatically</p>
+            <p className="text-[11px] text-muted-foreground">Tap to edit</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full bg-muted/50 px-2 py-1">
-            <span className="text-[11px] text-muted-foreground">Auto</span>
-            <Switch
-              id="autoUpdateFX"
-              checked={autoUpdateFX}
-              onCheckedChange={setAutoUpdateFX}
-              className="scale-90"
-            />
-          </div>
+          <Switch
+            id="autoUpdateFX"
+            checked={autoUpdateFX}
+            onCheckedChange={setAutoUpdateFX}
+            className="scale-90"
+          />
           <Button
             variant="outline"
             size="sm"
             onClick={onRefreshRates}
             disabled={isLoadingRates}
-            className="h-8 gap-1.5 px-2 sm:px-3"
+            className="h-8 gap-1 px-2"
           >
             <RefreshCw className={`w-4 h-4 ${isLoadingRates ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline text-xs">
@@ -90,8 +87,8 @@ export const CurrencyRatesSection = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mt-3">
-        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+        <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
           <Label className="text-[11px] text-muted-foreground block mb-1">KRW → EUR</Label>
           {editKrw ? (
             <Input
@@ -127,7 +124,7 @@ export const CurrencyRatesSection = ({
           )}
         </div>
 
-        <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+        <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
           <Label className="text-[11px] text-muted-foreground block mb-1">USD → EUR</Label>
           {editUsd ? (
             <Input
@@ -165,15 +162,15 @@ export const CurrencyRatesSection = ({
       </div>
 
       {(krwInvalid || usdInvalid) && lastValidRates && (
-        <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/30 mt-3">
-          <p className="text-xs text-destructive">Out of range. Restore last successful rates?</p>
+        <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/30 mt-2">
+          <p className="text-[11px] text-destructive">Out of range. Restore last successful rates?</p>
           <Button size="sm" variant="outline" onClick={onRevertToLastValid}>
             Revert
           </Button>
         </div>
       )}
 
-      <p className="text-[11px] text-muted-foreground mt-3">
+      <p className="text-[11px] text-muted-foreground mt-2">
         Last updated: {updatedLabel}
       </p>
     </Card>
