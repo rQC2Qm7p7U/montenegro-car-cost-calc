@@ -11,10 +11,13 @@ import { ResultsBottomSheet } from "./calculator/ResultsBottomSheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+const PERSIST_KEY = "car-import-state-v1";
+
 const Calculator = () => {
   const { toast } = useToast();
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const formChangeRef = useRef(false);
+  const isHydratedRef = useRef(false);
 
   // Car prices (array of EUR values)
   const [carPrices, setCarPrices] = useState<number[]>([0]);
@@ -37,6 +40,101 @@ const Calculator = () => {
   const [numberOfCars, setNumberOfCars] = useState<number>(1);
   const [containerType, setContainerType] = useState<"20ft" | "40ft">("40ft");
 
+  // Hydrate state from URL/localStorage
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const storedRaw = localStorage.getItem(PERSIST_KEY);
+      const stored = storedRaw ? JSON.parse(storedRaw) : {};
+
+      const parseNumber = (value: unknown, fallback: number) => {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : fallback;
+      };
+
+      const parseBool = (value: unknown, fallback: boolean) => {
+        if (value === "true" || value === true) return true;
+        if (value === "false" || value === false) return false;
+        return fallback;
+      };
+
+      const parseArray = (value: unknown) => {
+        if (Array.isArray(value)) return value;
+        if (typeof value === "string") return value.split(",");
+        return [];
+      };
+
+      const urlState = {
+        carPrices: params.get("carPrices"),
+        krwToEurRate: params.get("krwToEurRate"),
+        usdToEurRate: params.get("usdToEurRate"),
+        customsDuty: params.get("customsDuty"),
+        vat: params.get("vat"),
+        translationPages: params.get("translationPages"),
+        homologationFee: params.get("homologationFee"),
+        miscellaneous: params.get("miscellaneous"),
+        scenario: params.get("scenario"),
+        numberOfCars: params.get("numberOfCars"),
+        containerType: params.get("containerType"),
+        autoUpdateFX: params.get("autoUpdateFX"),
+      };
+
+      const merged = { ...stored, ...urlState };
+
+      const resolvedNumberOfCars = Math.min(
+        4,
+        Math.max(1, parseNumber(merged.numberOfCars, numberOfCars)),
+      );
+
+      const resolvedContainer =
+        merged.containerType === "20ft" || merged.containerType === "40ft"
+          ? merged.containerType
+          : containerType;
+
+      const parsedCarPrices = parseArray(
+        merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined,
+      )
+        .map((price) => parseNumber(price, 0))
+        .slice(0, resolvedNumberOfCars);
+
+      if (parsedCarPrices.length > 0) {
+        setCarPrices((prev) => {
+          const next = [...prev];
+          parsedCarPrices.forEach((price, index) => {
+            next[index] = price;
+          });
+          return next.slice(0, resolvedNumberOfCars);
+        });
+      }
+
+      setKrwToEurRate(parseNumber(merged.krwToEurRate, krwToEurRate));
+      setUsdToEurRate(parseNumber(merged.usdToEurRate, usdToEurRate));
+      setCustomsDuty(parseNumber(merged.customsDuty, customsDuty));
+      setVat(parseNumber(merged.vat, vat));
+      setTranslationPages(
+        Math.max(0, parseNumber(merged.translationPages, translationPages)),
+      );
+      setHomologationFee(
+        Math.max(0, parseNumber(merged.homologationFee, homologationFee)),
+      );
+      setMiscellaneous(Math.max(0, parseNumber(merged.miscellaneous, miscellaneous)));
+
+      if (merged.scenario === "physical" || merged.scenario === "company") {
+        setScenario(merged.scenario);
+      }
+
+      setNumberOfCars(resolvedNumberOfCars);
+      setContainerType(resolvedContainer);
+      setAutoUpdateFX(parseBool(merged.autoUpdateFX, autoUpdateFX));
+
+      isHydratedRef.current = true;
+      formChangeRef.current = false;
+    } catch (error) {
+      console.warn("Failed to hydrate calculator state", error);
+      isHydratedRef.current = true;
+    }
+  }, []);
+
   // Close modal when any input changes
   useEffect(() => {
     if (formChangeRef.current && isResultsOpen) {
@@ -56,6 +154,59 @@ const Calculator = () => {
       return prev;
     });
   }, [numberOfCars]);
+
+  // Persist state to localStorage and URL
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+
+    const payload = {
+      carPrices,
+      krwToEurRate,
+      usdToEurRate,
+      customsDuty,
+      vat,
+      translationPages,
+      homologationFee,
+      miscellaneous,
+      scenario,
+      numberOfCars,
+      containerType,
+      autoUpdateFX,
+    };
+
+    localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
+
+    const params = new URLSearchParams(window.location.search);
+    params.set("carPrices", carPrices.join(","));
+    params.set("krwToEurRate", String(krwToEurRate));
+    params.set("usdToEurRate", String(usdToEurRate));
+    params.set("customsDuty", String(customsDuty));
+    params.set("vat", String(vat));
+    params.set("translationPages", String(translationPages));
+    params.set("homologationFee", String(homologationFee));
+    params.set("miscellaneous", String(miscellaneous));
+    params.set("scenario", scenario);
+    params.set("numberOfCars", String(numberOfCars));
+    params.set("containerType", containerType);
+    params.set("autoUpdateFX", String(autoUpdateFX));
+
+    const query = params.toString();
+    const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+    window.history.replaceState({}, "", newUrl);
+  }, [
+    autoUpdateFX,
+    carPrices,
+    containerType,
+    customsDuty,
+    homologationFee,
+    krwToEurRate,
+    miscellaneous,
+    numberOfCars,
+    scenario,
+    translationPages,
+    usdToEurRate,
+    vat,
+  ]);
 
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
