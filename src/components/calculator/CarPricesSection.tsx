@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/cu
 interface CarPricesSectionProps {
   numberOfCars: number;
   carPrices: number[];
-  setCarPrices: (prices: number[]) => void;
+  setCarPrices: Dispatch<SetStateAction<number[]>>;
   krwToEurRate: number;
 }
 

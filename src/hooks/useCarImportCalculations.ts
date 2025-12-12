@@ -18,22 +18,44 @@ interface UseCarImportCalculationsProps {
 export const useCarImportCalculations = (
   props: UseCarImportCalculationsProps,
 ): CalculationResults => {
+  const {
+    carPrices,
+    containerType,
+    customsDuty,
+    homologationFee,
+    miscellaneous,
+    numberOfCars,
+    scenario,
+    translationPages,
+    usdToEurRate,
+    vat,
+  } = props;
+
   return useMemo(
     () =>
       calculateCarImport({
-        ...props,
+        carPrices,
+        containerType,
+        customsDuty,
+        homologationFee,
+        miscellaneous,
+        numberOfCars,
+        scenario,
+        translationPages,
+        usdToEurRate,
+        vat,
       }),
     [
-      props.carPrices,
-      props.containerType,
-      props.customsDuty,
-      props.homologationFee,
-      props.miscellaneous,
-      props.numberOfCars,
-      props.scenario,
-      props.translationPages,
-      props.usdToEurRate,
-      props.vat,
+      carPrices,
+      containerType,
+      customsDuty,
+      homologationFee,
+      miscellaneous,
+      numberOfCars,
+      scenario,
+      translationPages,
+      usdToEurRate,
+      vat,
     ],
   );
 };

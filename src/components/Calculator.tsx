@@ -144,6 +144,8 @@ const Calculator = () => {
       console.warn("Failed to hydrate calculator state", error);
       isHydratedRef.current = true;
     }
+    // We only want to hydrate once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close modal when any input changes
@@ -152,7 +154,7 @@ const Calculator = () => {
       setIsResultsOpen(false);
     }
     formChangeRef.current = true;
-  }, [carPrices, krwToEurRate, usdToEurRate, customsDuty, vat, translationPages, homologationFee, miscellaneous, scenario, numberOfCars, containerType]);
+  }, [carPrices, krwToEurRate, usdToEurRate, customsDuty, vat, translationPages, homologationFee, miscellaneous, scenario, numberOfCars, containerType, isResultsOpen]);
 
   // Update carPrices array when numberOfCars changes
   useEffect(() => {
