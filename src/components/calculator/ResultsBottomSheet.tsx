@@ -13,16 +13,17 @@ import {
   RefreshCcw, 
   Download, 
   Car,
-  Container,
   Banknote,
   FileText,
   Ship,
   Building2,
   Calculator,
-  ArrowRight,
   CheckCircle2,
-  Info
+  Info,
+  TrendingUp
 } from "lucide-react";
+import { exportCalculationPDF } from "@/utils/pdfExport";
+import { toast } from "@/hooks/use-toast";
 
 interface ResultsBottomSheetProps {
   open: boolean;
@@ -51,37 +52,53 @@ export const ResultsBottomSheet = ({
   usdToEurRate,
   containerType,
   onRecalculate,
-  onDownloadPDF,
 }: ResultsBottomSheetProps) => {
-  const formatEUR = (value: number) => 
-    new Intl.NumberFormat('de-DE', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    }).format(value);
+  const formatEUR = (value: number) => Math.round(value).toLocaleString('de-DE');
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
   const containerInfo = containerType === "20ft" 
     ? { freightUSD: 3150, localEUR: 350 }
     : { freightUSD: 4150, localEUR: 420 };
 
-  // Calculate averages
-  const avgCarPrice = carsWithPrices.length > 0 
-    ? results.totalCarPrices / carsWithPrices.length 
-    : 0;
   const avgFinalCost = carsWithPrices.length > 0 
     ? results.totalFinalCost / carsWithPrices.length 
     : 0;
+
+  const handleExportPDF = () => {
+    try {
+      exportCalculationPDF({
+        results,
+        numberOfCars,
+        scenario,
+        customsDuty,
+        vat,
+        krwToEurRate,
+        usdToEurRate,
+        containerType,
+      });
+      toast({
+        title: "PDF Exported",
+        description: "Calculation report has been downloaded.",
+      });
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Could not generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange}>
       <BottomSheetHeader className="pb-0">
         <div className="flex items-center gap-3 pr-10 sm:pr-0">
-          <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">
-            <Receipt className="w-6 h-6 text-primary-foreground" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">
+            <Receipt className="w-5 h-5 text-primary-foreground" />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">Import Cost Analysis</h2>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-foreground truncate">Import Cost Analysis</h2>
+            <p className="text-xs text-muted-foreground">
               {containerType} Container • {carsWithPrices.length} vehicle{carsWithPrices.length !== 1 ? 's' : ''}
             </p>
           </div>
@@ -89,167 +106,143 @@ export const ResultsBottomSheet = ({
       </BottomSheetHeader>
 
       <BottomSheetBody className="pt-4">
-        <div className="space-y-6">
+        <div className="space-y-5">
           
-          {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 1: EXECUTIVE SUMMARY */}
-          {/* ═══════════════════════════════════════════════════════════════ */}
-          <section>
-            <Card className="overflow-hidden border-2 border-primary/30">
-              {/* Grand Total Header */}
-              <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 p-5 text-primary-foreground">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium opacity-90 uppercase tracking-wider">
-                      Total Import Cost
-                    </p>
-                    <p className="text-4xl font-bold mt-1">
-                      €{formatEUR(results.totalFinalCost)}
-                    </p>
-                  </div>
-                  <Calculator className="w-12 h-12 opacity-30" />
+          <Card className="overflow-hidden border-2 border-primary/30">
+            <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 p-4 text-primary-foreground">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium opacity-90 uppercase tracking-wider">
+                    Total Import Cost
+                  </p>
+                  <p className="text-3xl sm:text-4xl font-bold mt-1 truncate">
+                    €{formatEUR(results.totalFinalCost)}
+                  </p>
+                </div>
+                <Calculator className="w-10 h-10 opacity-30 shrink-0" />
+              </div>
+            </div>
+            
+            <div className="p-3 bg-gradient-to-b from-primary/5 to-transparent">
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="p-2 rounded-lg bg-background/80">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Vehicles</p>
+                  <p className="text-base font-bold text-foreground">{carsWithPrices.length}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-background/80">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Avg/Car</p>
+                  <p className="text-base font-bold text-foreground">€{formatEUR(avgFinalCost)}</p>
+                </div>
+                <div className="p-2 rounded-lg bg-background/80">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Taxes</p>
+                  <p className="text-base font-bold text-foreground">€{formatEUR(results.totalCustoms + results.totalVAT)}</p>
                 </div>
               </div>
-              
-              {/* Key Metrics */}
-              <div className="p-4 bg-gradient-to-b from-primary/5 to-transparent">
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="p-3 rounded-xl bg-background/80">
-                    <p className="text-xs text-muted-foreground mb-1">Vehicles</p>
-                    <p className="text-xl font-bold text-foreground">{carsWithPrices.length}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-background/80">
-                    <p className="text-xs text-muted-foreground mb-1">Avg. per Car</p>
-                    <p className="text-xl font-bold text-foreground">€{formatEUR(avgFinalCost)}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-background/80">
-                    <p className="text-xs text-muted-foreground mb-1">Taxes & Duties</p>
-                    <p className="text-xl font-bold text-foreground">€{formatEUR(results.totalCustoms + results.totalVAT)}</p>
-                  </div>
-                </div>
 
-                {scenario === "company" && (
-                  <div className="mt-4 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">Company Scenario</p>
-                          <p className="text-xs text-muted-foreground">With VAT refund</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Net Cost</p>
-                        <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          €{formatEUR(results.totalNetCostForCompany)}
-                        </p>
-                        <p className="text-xs text-green-600 dark:text-green-400">
-                          Save €{formatEUR(results.totalVATRefund)}
-                        </p>
+              {scenario === "company" && (
+                <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Building2 className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">Company</p>
+                        <p className="text-[10px] text-muted-foreground">VAT refund</p>
                       </div>
                     </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        €{formatEUR(results.totalNetCostForCompany)}
+                      </p>
+                      <p className="text-[10px] text-green-600 dark:text-green-400">
+                        Save €{formatEUR(results.totalVATRefund)}
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            </Card>
-          </section>
+                </div>
+              )}
+            </div>
+          </Card>
 
-          {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* SECTION 2: COST BREAKDOWN TABLE */}
-          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 2: COST BREAKDOWN */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <FileText className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-4 h-4 text-primary" />
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
                 Cost Breakdown
               </h3>
             </div>
             
             <Card className="overflow-hidden">
-              {/* Table Header */}
-              <div className="grid grid-cols-2 gap-2 p-3 bg-muted/50 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                <span>Description</span>
-                <span className="text-right">Amount</span>
-              </div>
-              
-              {/* Vehicle Costs */}
               <div className="divide-y divide-border/50">
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Car className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm">Vehicle Purchase ({carsWithPrices.length}×)</span>
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Car className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate">Vehicles ({carsWithPrices.length}×)</span>
                   </div>
-                  <span className="font-semibold">€{formatEUR(results.totalCarPrices)}</span>
+                  <span className="font-semibold shrink-0">€{formatEUR(results.totalCarPrices)}</span>
                 </div>
                 
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Ship className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <span className="text-sm">Sea Freight ({containerType})</span>
-                      <p className="text-xs text-muted-foreground">
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Ship className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-sm block truncate">Freight ({containerType})</span>
+                      <p className="text-[10px] text-muted-foreground">
                         ${containerInfo.freightUSD} + €{containerInfo.localEUR}
                       </p>
                     </div>
                   </div>
-                  <span className="font-semibold">€{formatEUR(results.freightPerContainerEUR)}</span>
+                  <span className="font-semibold shrink-0">€{formatEUR(results.freightPerContainerEUR)}</span>
                 </div>
 
-                <div className="p-3 bg-muted/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">CIF Value (Cost + Insurance + Freight)</span>
-                    <span className="font-bold text-primary">€{formatEUR(results.totalCIF)}</span>
-                  </div>
+                <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium truncate">CIF Value</span>
+                  <span className="font-bold text-primary shrink-0">€{formatEUR(results.totalCIF)}</span>
                 </div>
 
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <span className="text-sm">Customs Duty</span>
-                      <p className="text-xs text-muted-foreground">{customsDuty}% of CIF</p>
-                    </div>
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate">Customs {customsDuty}%</span>
                   </div>
-                  <span className="font-semibold">€{formatEUR(results.totalCustoms)}</span>
+                  <span className="font-semibold shrink-0">€{formatEUR(results.totalCustoms)}</span>
                 </div>
 
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <span className="text-sm">VAT</span>
-                      <p className="text-xs text-muted-foreground">{vat}% of (CIF + Duty)</p>
-                    </div>
+                <div className="p-3 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm truncate">VAT {vat}%</span>
                   </div>
-                  <span className="font-semibold">€{formatEUR(results.totalVAT)}</span>
+                  <span className="font-semibold shrink-0">€{formatEUR(results.totalVAT)}</span>
                 </div>
               </div>
 
               {/* Services Section */}
-              <div className="border-t-2 border-dashed border-border">
-                <div className="p-3 bg-muted/30 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Services & Fees (per container)
+              <div className="border-t border-dashed border-border">
+                <div className="p-2 bg-muted/30 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Services & Fees
                 </div>
-                <div className="divide-y divide-border/50">
-                  <div className="p-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Port & Agent Fee</span>
-                    <span>€{formatEUR(results.portAgentFeePerCar * numberOfCars)}</span>
+                <div className="grid grid-cols-2 gap-px bg-border/30">
+                  <div className="p-2 bg-background flex justify-between text-xs">
+                    <span className="text-muted-foreground truncate">Port & Agent</span>
+                    <span className="shrink-0 ml-1">€{formatEUR(results.portAgentFeePerCar * numberOfCars)}</span>
                   </div>
-                  <div className="p-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Speditor Fee ({numberOfCars}×)</span>
-                    <span>€{formatEUR(results.speditorFee * numberOfCars)}</span>
+                  <div className="p-2 bg-background flex justify-between text-xs">
+                    <span className="text-muted-foreground truncate">Speditor</span>
+                    <span className="shrink-0 ml-1">€{formatEUR(results.speditorFee * numberOfCars)}</span>
                   </div>
-                  <div className="p-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Translation</span>
-                    <span>€{formatEUR(results.translationPerCar * numberOfCars)}</span>
+                  <div className="p-2 bg-background flex justify-between text-xs">
+                    <span className="text-muted-foreground truncate">Translation</span>
+                    <span className="shrink-0 ml-1">€{formatEUR(results.translationPerCar * numberOfCars)}</span>
                   </div>
-                  <div className="p-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Homologation ({numberOfCars}×)</span>
-                    <span>€{formatEUR(results.carResults[0]?.homologationFee * numberOfCars || 0)}</span>
+                  <div className="p-2 bg-background flex justify-between text-xs">
+                    <span className="text-muted-foreground truncate">Homologation</span>
+                    <span className="shrink-0 ml-1">€{formatEUR((results.carResults[0]?.homologationFee || 0) * numberOfCars)}</span>
                   </div>
                   {results.carResults[0]?.miscellaneous > 0 && (
-                    <div className="p-3 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Miscellaneous ({numberOfCars}×)</span>
+                    <div className="p-2 bg-background flex justify-between text-xs col-span-2">
+                      <span className="text-muted-foreground">Miscellaneous</span>
                       <span>€{formatEUR(results.carResults[0].miscellaneous * numberOfCars)}</span>
                     </div>
                   )}
@@ -257,172 +250,123 @@ export const ResultsBottomSheet = ({
               </div>
 
               {/* Grand Total */}
-              <div className="p-4 bg-primary/10 border-t-2 border-primary/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-primary" />
-                    <span className="font-bold text-lg">GRAND TOTAL</span>
-                  </div>
-                  <span className="text-2xl font-bold text-primary">€{formatEUR(results.totalFinalCost)}</span>
+              <div className="p-3 bg-primary/10 border-t-2 border-primary/30 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                  <span className="font-bold text-base">TOTAL</span>
                 </div>
+                <span className="text-xl font-bold text-primary">€{formatEUR(results.totalFinalCost)}</span>
               </div>
             </Card>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════════════ */}
           {/* SECTION 3: PER VEHICLE ANALYSIS */}
-          {/* ═══════════════════════════════════════════════════════════════ */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <Car className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-                Per Vehicle Analysis
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
+                Per Vehicle
               </h3>
             </div>
 
-            <div className="space-y-3">
-              {results.carResults.map((car) => (
-                <Card 
-                  key={car.carIndex} 
-                  className={`overflow-hidden transition-all ${
-                    car.carPrice > 0 
-                      ? 'border-primary/20' 
-                      : 'opacity-40 border-dashed'
-                  }`}
-                >
-                  {/* Car Header */}
-                  <div className={`p-3 flex items-center justify-between ${
-                    car.carPrice > 0 ? 'bg-primary/5' : 'bg-muted/30'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
-                        car.carPrice > 0 
-                          ? 'bg-primary text-primary-foreground' 
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
+            <div className="space-y-2">
+              {carsWithPrices.map((car) => (
+                <Card key={car.carIndex} className="overflow-hidden border-primary/20">
+                  <div className="p-3 bg-primary/5 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold bg-primary text-primary-foreground shrink-0">
                         {car.carIndex}
                       </div>
-                      <div>
-                        <p className="font-semibold text-foreground">Vehicle #{car.carIndex}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {car.carPrice > 0 ? `Purchase: €${formatEUR(car.carPrice)}` : 'No price entered'}
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm text-foreground">Car #{car.carIndex}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          Purchase: €{formatEUR(car.carPrice)}
                         </p>
                       </div>
                     </div>
-                    {car.carPrice > 0 && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">Total Cost</p>
-                        <p className="text-xl font-bold text-primary">€{formatEUR(car.finalCost)}</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-bold text-primary">€{formatEUR(car.finalCost)}</p>
+                    </div>
+                  </div>
+                  
+                  <div className="p-3">
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">CIF</p>
+                        <p className="font-semibold">€{formatEUR(car.cif)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">Customs</p>
+                        <p className="font-semibold">€{formatEUR(car.customs)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">VAT</p>
+                        <p className="font-semibold">€{formatEUR(car.vatAmount)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">Freight</p>
+                        <p className="font-semibold">€{formatEUR(car.freightPerCar)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">Services</p>
+                        <p className="font-semibold">€{formatEUR(car.portAgentFeePerCar + car.translationPerCar + car.speditorFee)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">Homolog.</p>
+                        <p className="font-semibold">€{formatEUR(car.homologationFee)}</p>
+                      </div>
+                    </div>
+
+                    {scenario === "company" && (
+                      <div className="mt-2 p-2 rounded bg-green-500/10 border border-green-500/20 flex items-center justify-between text-xs">
+                        <span className="text-green-700 dark:text-green-400 font-medium">
+                          VAT Refund: €{formatEUR(car.vatRefund)}
+                        </span>
+                        <span className="font-bold text-green-600 dark:text-green-400">
+                          Net: €{formatEUR(car.netCostForCompany)}
+                        </span>
                       </div>
                     )}
                   </div>
-                  
-                  {car.carPrice > 0 && (
-                    <div className="p-3">
-                      {/* Cost Flow */}
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3 overflow-x-auto pb-1">
-                        <span className="whitespace-nowrap bg-muted/50 px-2 py-1 rounded">€{formatEUR(car.carPrice)}</span>
-                        <ArrowRight className="w-3 h-3 shrink-0" />
-                        <span className="whitespace-nowrap bg-muted/50 px-2 py-1 rounded">+Freight</span>
-                        <ArrowRight className="w-3 h-3 shrink-0" />
-                        <span className="whitespace-nowrap bg-primary/10 px-2 py-1 rounded font-medium">CIF €{formatEUR(car.cif)}</span>
-                        <ArrowRight className="w-3 h-3 shrink-0" />
-                        <span className="whitespace-nowrap bg-muted/50 px-2 py-1 rounded">+Tax</span>
-                        <ArrowRight className="w-3 h-3 shrink-0" />
-                        <span className="whitespace-nowrap bg-primary/20 px-2 py-1 rounded font-semibold">€{formatEUR(car.finalCost)}</span>
-                      </div>
-
-                      {/* Detailed Breakdown */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">CIF Value</span>
-                          <span className="font-medium">€{formatEUR(car.cif)}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">Customs ({customsDuty}%)</span>
-                          <span className="font-medium">€{formatEUR(car.customs)}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">VAT ({vat}%)</span>
-                          <span className="font-medium">€{formatEUR(car.vatAmount)}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">Freight Share</span>
-                          <span className="font-medium">€{formatEUR(car.freightPerCar)}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">Services</span>
-                          <span className="font-medium">€{formatEUR(car.portAgentFeePerCar + car.translationPerCar + car.speditorFee)}</span>
-                        </div>
-                        <div className="flex justify-between py-1.5 border-b border-border/30">
-                          <span className="text-muted-foreground">Homologation</span>
-                          <span className="font-medium">€{formatEUR(car.homologationFee)}</span>
-                        </div>
-                      </div>
-
-                      {scenario === "company" && (
-                        <div className="mt-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                          <div className="flex items-center justify-between text-sm">
-                            <div>
-                              <span className="text-green-700 dark:text-green-400 font-medium">VAT Refund</span>
-                              <span className="text-muted-foreground ml-2">+€{formatEUR(car.vatRefund)}</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs text-muted-foreground">Net: </span>
-                              <span className="font-bold text-green-600 dark:text-green-400">€{formatEUR(car.netCostForCompany)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </Card>
               ))}
             </div>
           </section>
 
-          {/* ═══════════════════════════════════════════════════════════════ */}
-          {/* SECTION 4: CALCULATION PARAMETERS */}
-          {/* ═══════════════════════════════════════════════════════════════ */}
+          {/* SECTION 4: PARAMETERS */}
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <Info className="w-5 h-5 text-muted-foreground" />
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Calculation Parameters
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="w-4 h-4 text-muted-foreground" />
+              <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                Parameters
               </h3>
             </div>
             
-            <Card className="p-4 bg-muted/20 border-border/50">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div className="text-center p-2 bg-background/60 rounded-lg">
-                  <p className="text-muted-foreground mb-1">Container</p>
+            <Card className="p-3 bg-muted/20 border-border/50">
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="p-1.5 bg-background/60 rounded">
+                  <p className="text-[10px] text-muted-foreground">Container</p>
                   <p className="font-semibold">{containerType}</p>
                 </div>
-                <div className="text-center p-2 bg-background/60 rounded-lg">
-                  <p className="text-muted-foreground mb-1">Customs</p>
+                <div className="p-1.5 bg-background/60 rounded">
+                  <p className="text-[10px] text-muted-foreground">Customs</p>
                   <p className="font-semibold">{customsDuty}%</p>
                 </div>
-                <div className="text-center p-2 bg-background/60 rounded-lg">
-                  <p className="text-muted-foreground mb-1">VAT</p>
+                <div className="p-1.5 bg-background/60 rounded">
+                  <p className="text-[10px] text-muted-foreground">VAT</p>
                   <p className="font-semibold">{vat}%</p>
                 </div>
-                <div className="text-center p-2 bg-background/60 rounded-lg">
-                  <p className="text-muted-foreground mb-1">Scenario</p>
+                <div className="p-1.5 bg-background/60 rounded">
+                  <p className="text-[10px] text-muted-foreground">Type</p>
                   <p className="font-semibold capitalize">{scenario}</p>
                 </div>
               </div>
               
-              <Separator className="my-3" />
+              <Separator className="my-2" />
               
-              <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary/50" />
-                  <span>1 EUR = {(1 / krwToEurRate).toLocaleString('de-DE', { maximumFractionDigits: 0 })} KRW</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-primary/50" />
-                  <span>1 USD = {usdToEurRate.toFixed(4)} EUR</span>
-                </div>
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
+                <span>1 EUR = {Math.round(1 / krwToEurRate).toLocaleString('de-DE')} KRW</span>
+                <span>1 USD = {usdToEurRate.toFixed(4)} EUR</span>
               </div>
             </Card>
           </section>
@@ -435,14 +379,14 @@ export const ResultsBottomSheet = ({
           <Button 
             variant="outline" 
             onClick={onRecalculate}
-            className="flex-1 h-12 gap-2"
+            className="flex-1 h-11 gap-2"
           >
             <RefreshCcw className="w-4 h-4" />
-            Edit Data
+            Edit
           </Button>
           <Button 
-            onClick={onDownloadPDF}
-            className="flex-1 h-12 gap-2 bg-primary hover:bg-primary/90"
+            onClick={handleExportPDF}
+            className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90"
           >
             <Download className="w-4 h-4" />
             Export PDF
