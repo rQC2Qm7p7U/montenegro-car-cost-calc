@@ -27,21 +27,52 @@ export const convertUSDToEUR = (usd: number, rate: number): number => {
 };
 
 // Fetch live exchange rates from exchangerate API
-export const fetchExchangeRates = async (): Promise<{ krwToEur: number; usdToEur: number } | null> => {
+export interface ExchangeRates {
+  krwToEur: number;
+  usdToEur: number;
+  isFallback: boolean;
+}
+
+const FALLBACK_RATES: ExchangeRates = { krwToEur: 0.00068, usdToEur: 0.93, isFallback: true };
+const VALID_RANGES = {
+  krwToEur: { min: 0.0001, max: 0.005 },
+  usdToEur: { min: 0.5, max: 2 },
+};
+
+export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
   try {
-    const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
-    if (!response.ok) throw new Error('Failed to fetch rates');
+    const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR', {
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Failed to fetch rates: ${response.status}`);
     
     const data = await response.json();
-    const eurToKrw = data.rates.KRW;
-    const eurToUsd = data.rates.USD;
-    
-    return {
-      krwToEur: 1 / eurToKrw,
-      usdToEur: 1 / eurToUsd,
-    };
+    const rates = data?.rates;
+    const eurToKrw = typeof rates?.KRW === 'number' ? rates.KRW : null;
+    const eurToUsd = typeof rates?.USD === 'number' ? rates.USD : null;
+
+    if (!eurToKrw || !eurToUsd || !Number.isFinite(eurToKrw) || !Number.isFinite(eurToUsd)) {
+      throw new Error('Missing or invalid rate fields');
+    }
+
+    const krwToEur = 1 / eurToKrw;
+    const usdToEur = 1 / eurToUsd;
+
+    const krwInRange = krwToEur >= VALID_RANGES.krwToEur.min && krwToEur <= VALID_RANGES.krwToEur.max;
+    const usdInRange = usdToEur >= VALID_RANGES.usdToEur.min && usdToEur <= VALID_RANGES.usdToEur.max;
+
+    if (!krwInRange || !usdInRange) {
+      throw new Error(`Rates out of expected range: KRW/EUR=${krwToEur}, USD/EUR=${usdToEur}`);
+    }
+
+    return { krwToEur, usdToEur, isFallback: false };
   } catch (error) {
-    console.error('Error fetching exchange rates:', error);
-    return null;
+    console.error('Error fetching exchange rates, using fallbacks:', error);
+    return { ...FALLBACK_RATES };
+  } finally {
+    clearTimeout(timeout);
   }
 };

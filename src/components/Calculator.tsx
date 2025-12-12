@@ -75,20 +75,16 @@ const Calculator = () => {
   const handleFetchRates = useCallback(async () => {
     setIsLoadingRates(true);
     const rates = await fetchExchangeRates();
-    if (rates) {
-      setKrwToEurRate(rates.krwToEur);
-      setUsdToEurRate(rates.usdToEur);
-      toast({
-        title: "Rates updated",
-        description: `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
-      });
-    } else {
-      toast({
-        title: "Failed to fetch rates",
-        description: "Using manual rates",
-        variant: "destructive",
-      });
-    }
+    setKrwToEurRate(rates.krwToEur);
+    setUsdToEurRate(rates.usdToEur);
+
+    toast({
+      title: rates.isFallback ? "Using fallback rates" : "Rates updated",
+      description: rates.isFallback
+        ? "Live rates were unavailable or invalid; using safe defaults."
+        : `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
+      variant: rates.isFallback ? "destructive" : "default",
+    });
     setIsLoadingRates(false);
   }, [toast]);
 
