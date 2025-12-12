@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import type { SetStateAction } from "react";
 import { Ship, Calculator as CalcIcon, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
@@ -24,150 +25,284 @@ const DEFAULTS = {
   miscellaneous: 0,
 };
 
+type InitialState = {
+  carPrices: number[];
+  krwToEurRate: number;
+  usdToEurRate: number;
+  customsDuty: number;
+  vat: number;
+  translationPages: number;
+  homologationFee: number;
+  miscellaneous: number;
+  scenario: "physical" | "company";
+  numberOfCars: number;
+  containerType: "20ft" | "40ft";
+  autoUpdateFX: boolean;
+  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  lastUpdatedAt: number | null;
+};
+
+const readInitialState = (): InitialState => {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const storedRaw = localStorage.getItem(PERSIST_KEY);
+    const stored = storedRaw ? JSON.parse(storedRaw) : {};
+    const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
+    const lastFx = storedFX ? JSON.parse(storedFX) : null;
+
+    const parseNumber = (value: unknown, fallback: number) => {
+      if (value === null || value === undefined || value === "") return fallback;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : fallback;
+    };
+
+    const parseBool = (value: unknown, fallback: boolean) => {
+      if (value === "true" || value === true) return true;
+      if (value === "false" || value === false) return false;
+      return fallback;
+    };
+
+    const parseArray = (value: unknown) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") return value.split(",");
+      return [];
+    };
+
+    const urlState = {
+      carPrices: params.get("carPrices"),
+      krwToEurRate: params.get("krwToEurRate"),
+      usdToEurRate: params.get("usdToEurRate"),
+      customsDuty: params.get("customsDuty"),
+      vat: params.get("vat"),
+      translationPages: params.get("translationPages"),
+      homologationFee: params.get("homologationFee"),
+      miscellaneous: params.get("miscellaneous"),
+      scenario: params.get("scenario"),
+      numberOfCars: params.get("numberOfCars"),
+      containerType: params.get("containerType"),
+      autoUpdateFX: params.get("autoUpdateFX"),
+    };
+
+    const merged = { ...stored, ...urlState };
+    const resolvedNumberOfCars = Math.min(4, Math.max(1, parseNumber(merged.numberOfCars, 1)));
+
+    const resolvedContainer =
+      merged.containerType === "20ft" || merged.containerType === "40ft"
+        ? merged.containerType
+        : "40ft";
+
+    const parsedCarPrices = parseArray(
+      merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined,
+    )
+      .map((price) => parseNumber(price, 0))
+      .slice(0, resolvedNumberOfCars);
+
+    const normalizedCarPrices =
+      parsedCarPrices.length > 0
+        ? Array.from({ length: resolvedNumberOfCars }, (_, index) => parsedCarPrices[index] ?? 0)
+        : Array.from({ length: resolvedNumberOfCars }, () => 0);
+
+    const lastValidRates =
+      lastFx && Number.isFinite(lastFx.krwToEur) && Number.isFinite(lastFx.usdToEur)
+        ? { krwToEur: lastFx.krwToEur, usdToEur: lastFx.usdToEur }
+        : null;
+
+    return {
+      carPrices: normalizedCarPrices,
+      krwToEurRate: parseNumber(merged.krwToEurRate, 0.00068),
+      usdToEurRate: parseNumber(merged.usdToEurRate, 0.93),
+      customsDuty: parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
+      vat: parseNumber(merged.vat, DEFAULTS.vat),
+      translationPages: Math.max(0, parseNumber(merged.translationPages, DEFAULTS.translationPages)),
+      homologationFee: Math.max(0, parseNumber(merged.homologationFee, DEFAULTS.homologationFee)),
+      miscellaneous: Math.max(0, parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)),
+      scenario: merged.scenario === "company" ? "company" : "physical",
+      numberOfCars: resolvedNumberOfCars,
+      containerType: resolvedContainer,
+      autoUpdateFX: parseBool(merged.autoUpdateFX, false),
+      lastValidRates,
+      lastUpdatedAt: Number.isFinite(lastFx?.fetchedAt) ? lastFx?.fetchedAt : null,
+    };
+  } catch (error) {
+    console.warn("Failed to hydrate calculator state", error);
+  }
+
+  return {
+    carPrices: [0],
+    krwToEurRate: 0.00068,
+    usdToEurRate: 0.93,
+    customsDuty: DEFAULTS.customsDuty,
+    vat: DEFAULTS.vat,
+    translationPages: DEFAULTS.translationPages,
+    homologationFee: DEFAULTS.homologationFee,
+    miscellaneous: DEFAULTS.miscellaneous,
+    scenario: "physical",
+    numberOfCars: 1,
+    containerType: "40ft",
+    autoUpdateFX: false,
+    lastValidRates: null,
+    lastUpdatedAt: null,
+  };
+};
+
 const Calculator = () => {
   const { toast } = useToast();
-  const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const initialStateRef = useRef<InitialState | null>(null);
+  if (!initialStateRef.current) {
+    initialStateRef.current = readInitialState();
+  }
+  const initialState = initialStateRef.current;
+
+  const isMountedRef = useRef(true);
+  const hasMountedRef = useRef(false);
+  const fetchInFlightRef = useRef(false);
+  const [isResultsOpenState, setIsResultsOpenState] = useState(false);
+  const isResultsOpenRef = useRef(false);
   const formChangeRef = useRef(false);
-  const isHydratedRef = useRef(false);
   const initialRatesFetchedRef = useRef(false);
 
   // Car prices (array of EUR values)
-  const [carPrices, setCarPrices] = useState<number[]>([0]);
+  const [carPrices, setCarPrices] = useState<number[]>(initialState.carPrices);
 
   // Currency rates
-  const [krwToEurRate, setKrwToEurRate] = useState<number>(0.00068);
-  const [usdToEurRate, setUsdToEurRate] = useState<number>(0.93);
-  const [autoUpdateFX, setAutoUpdateFX] = useState<boolean>(false);
+  const [krwToEurRate, setKrwToEurRate] = useState<number>(initialState.krwToEurRate);
+  const [usdToEurRate, setUsdToEurRate] = useState<number>(initialState.usdToEurRate);
+  const [autoUpdateFX, setAutoUpdateFX] = useState<boolean>(initialState.autoUpdateFX);
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
-  const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(initialState.lastUpdatedAt);
+  const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(
+    initialState.lastValidRates,
+  );
 
   // Other costs
-  const [customsDuty, setCustomsDuty] = useState<number>(DEFAULTS.customsDuty);
-  const [vat, setVat] = useState<number>(DEFAULTS.vat);
-  const [translationPages, setTranslationPages] = useState<number>(DEFAULTS.translationPages);
-  const [homologationFee, setHomologationFee] = useState<number>(DEFAULTS.homologationFee);
-  const [miscellaneous, setMiscellaneous] = useState<number>(DEFAULTS.miscellaneous);
+  const [customsDuty, setCustomsDuty] = useState<number>(initialState.customsDuty);
+  const [vat, setVat] = useState<number>(initialState.vat);
+  const [translationPages, setTranslationPages] = useState<number>(initialState.translationPages);
+  const [homologationFee, setHomologationFee] = useState<number>(initialState.homologationFee);
+  const [miscellaneous, setMiscellaneous] = useState<number>(initialState.miscellaneous);
   const [isRatesSheetOpen, setIsRatesSheetOpen] = useState(false);
   const ratesSheetTouchStart = useRef<number | null>(null);
 
   // Other settings
-  const [scenario, setScenario] = useState<"physical" | "company">("physical");
-  const [numberOfCars, setNumberOfCars] = useState<number>(1);
-  const [containerType, setContainerType] = useState<"20ft" | "40ft">("40ft");
+  const [scenario, setScenario] = useState<"physical" | "company">(initialState.scenario);
+  const [numberOfCars, setNumberOfCars] = useState<number>(initialState.numberOfCars);
+  const [containerType, setContainerType] = useState<"20ft" | "40ft">(initialState.containerType);
 
-  // Hydrate state from URL/localStorage
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const storedRaw = localStorage.getItem(PERSIST_KEY);
-      const stored = storedRaw ? JSON.parse(storedRaw) : {};
-      const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
-      const lastFx = storedFX ? JSON.parse(storedFX) : null;
-
-      const parseNumber = (value: unknown, fallback: number) => {
-        if (value === null || value === undefined || value === "") return fallback;
-        const num = Number(value);
-        return Number.isFinite(num) ? num : fallback;
-      };
-
-      const parseBool = (value: unknown, fallback: boolean) => {
-        if (value === "true" || value === true) return true;
-        if (value === "false" || value === false) return false;
-        return fallback;
-      };
-
-      const parseArray = (value: unknown) => {
-        if (Array.isArray(value)) return value;
-        if (typeof value === "string") return value.split(",");
-        return [];
-      };
-
-      const urlState = {
-        carPrices: params.get("carPrices"),
-        krwToEurRate: params.get("krwToEurRate"),
-        usdToEurRate: params.get("usdToEurRate"),
-        customsDuty: params.get("customsDuty"),
-        vat: params.get("vat"),
-        translationPages: params.get("translationPages"),
-        homologationFee: params.get("homologationFee"),
-        miscellaneous: params.get("miscellaneous"),
-        scenario: params.get("scenario"),
-        numberOfCars: params.get("numberOfCars"),
-        containerType: params.get("containerType"),
-        autoUpdateFX: params.get("autoUpdateFX"),
-      };
-
-      const merged = { ...stored, ...urlState };
-
-      const resolvedNumberOfCars = Math.min(
-        4,
-        Math.max(1, parseNumber(merged.numberOfCars, numberOfCars)),
-      );
-
-      const resolvedContainer =
-        merged.containerType === "20ft" || merged.containerType === "40ft"
-          ? merged.containerType
-          : containerType;
-
-      const parsedCarPrices = parseArray(
-        merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined,
-      )
-        .map((price) => parseNumber(price, 0))
-        .slice(0, resolvedNumberOfCars);
-
-      if (parsedCarPrices.length > 0) {
-        setCarPrices((prev) => {
-          const next = [...prev];
-          parsedCarPrices.forEach((price, index) => {
-            next[index] = price;
-          });
-          return next.slice(0, resolvedNumberOfCars);
-        });
-      }
-
-      setKrwToEurRate(parseNumber(merged.krwToEurRate, krwToEurRate));
-      setUsdToEurRate(parseNumber(merged.usdToEurRate, usdToEurRate));
-      setCustomsDuty(parseNumber(merged.customsDuty, DEFAULTS.customsDuty));
-      setVat(parseNumber(merged.vat, DEFAULTS.vat));
-      setTranslationPages(
-        Math.max(0, parseNumber(merged.translationPages, DEFAULTS.translationPages)),
-      );
-      setHomologationFee(
-        Math.max(0, parseNumber(merged.homologationFee, DEFAULTS.homologationFee)),
-      );
-      setMiscellaneous(Math.max(0, parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)));
-
-      if (merged.scenario === "physical" || merged.scenario === "company") {
-        setScenario(merged.scenario);
-      }
-
-      setNumberOfCars(resolvedNumberOfCars);
-      setContainerType(resolvedContainer);
-      setAutoUpdateFX(parseBool(merged.autoUpdateFX, autoUpdateFX));
-
-      if (lastFx && Number.isFinite(lastFx.krwToEur) && Number.isFinite(lastFx.usdToEur)) {
-        setLastValidRates({ krwToEur: lastFx.krwToEur, usdToEur: lastFx.usdToEur });
-        setLastUpdatedAt(Number.isFinite(lastFx.fetchedAt) ? lastFx.fetchedAt : Date.now());
-      }
-
-      isHydratedRef.current = true;
-      formChangeRef.current = false;
-    } catch (error) {
-      console.warn("Failed to hydrate calculator state", error);
-      isHydratedRef.current = true;
-    }
-    // We only want to hydrate once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const setIsResultsOpen = useCallback((open: boolean) => {
+    isResultsOpenRef.current = open;
+    setIsResultsOpenState(open);
   }, []);
+  const isResultsOpen = isResultsOpenState;
 
-  // Close modal when any input changes
-  useEffect(() => {
-    if (formChangeRef.current && isResultsOpen) {
+  const markFormChanged = useCallback(() => {
+    formChangeRef.current = true;
+    if (isResultsOpenRef.current) {
       setIsResultsOpen(false);
     }
-    formChangeRef.current = true;
-  }, [carPrices, krwToEurRate, usdToEurRate, customsDuty, vat, translationPages, homologationFee, miscellaneous, scenario, numberOfCars, containerType, isResultsOpen]);
+  }, [setIsResultsOpen]);
+
+  const setCarPricesTracked = useCallback(
+    (updater: SetStateAction<number[]>) => {
+      markFormChanged();
+      setCarPrices(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setKrwToEurRateTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setKrwToEurRate(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setUsdToEurRateTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setUsdToEurRate(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setCustomsDutyTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setCustomsDuty(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setVatTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setVat(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setTranslationPagesTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setTranslationPages(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setHomologationFeeTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setHomologationFee(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setMiscellaneousTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setMiscellaneous(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setScenarioTracked = useCallback(
+    (next: "physical" | "company") => {
+      markFormChanged();
+      setScenario(next);
+    },
+    [markFormChanged],
+  );
+
+  const setNumberOfCarsTracked = useCallback(
+    (updater: SetStateAction<number>) => {
+      markFormChanged();
+      setNumberOfCars(updater);
+    },
+    [markFormChanged],
+  );
+
+  const setContainerTypeTracked = useCallback(
+    (next: "20ft" | "40ft") => {
+      markFormChanged();
+      setContainerType(next);
+    },
+    [markFormChanged],
+  );
+
+  const setAutoUpdateFXTracked = useCallback(
+    (updater: SetStateAction<boolean>) => {
+      markFormChanged();
+      setAutoUpdateFX(updater);
+    },
+    [markFormChanged],
+  );
+
+  useEffect(
+    () => () => {
+      isMountedRef.current = false;
+    },
+    [],
+  );
 
   // Update carPrices array when numberOfCars changes
   useEffect(() => {
@@ -183,42 +318,51 @@ const Calculator = () => {
 
   // Persist state to localStorage and URL
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
 
-    const payload = {
-      carPrices,
-      krwToEurRate,
-      usdToEurRate,
-      customsDuty,
-      vat,
-      translationPages,
-      homologationFee,
-      miscellaneous,
-      scenario,
-      numberOfCars,
-      containerType,
-      autoUpdateFX,
-    };
+    const id = window.setTimeout(() => {
+      if (!isMountedRef.current) return;
 
-    localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
+      const payload = {
+        carPrices,
+        krwToEurRate,
+        usdToEurRate,
+        customsDuty,
+        vat,
+        translationPages,
+        homologationFee,
+        miscellaneous,
+        scenario,
+        numberOfCars,
+        containerType,
+        autoUpdateFX,
+      };
 
-    const params = new URLSearchParams(window.location.search);
-    params.set("carPrices", carPrices.join(","));
-    params.set("krwToEurRate", String(krwToEurRate));
-    params.set("usdToEurRate", String(usdToEurRate));
-    params.set("customsDuty", String(customsDuty));
-    params.set("vat", String(vat));
-    params.set("translationPages", String(translationPages));
-    params.set("homologationFee", String(homologationFee));
-    params.set("miscellaneous", String(miscellaneous));
-    params.set("scenario", scenario);
-    params.set("numberOfCars", String(numberOfCars));
-    params.set("containerType", containerType);
-    params.set("autoUpdateFX", String(autoUpdateFX));
+      localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
 
-    const query = params.toString();
-    const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-    window.history.replaceState({}, "", newUrl);
+      const params = new URLSearchParams(window.location.search);
+      params.set("carPrices", carPrices.join(","));
+      params.set("krwToEurRate", String(krwToEurRate));
+      params.set("usdToEurRate", String(usdToEurRate));
+      params.set("customsDuty", String(customsDuty));
+      params.set("vat", String(vat));
+      params.set("translationPages", String(translationPages));
+      params.set("homologationFee", String(homologationFee));
+      params.set("miscellaneous", String(miscellaneous));
+      params.set("scenario", scenario);
+      params.set("numberOfCars", String(numberOfCars));
+      params.set("containerType", containerType);
+      params.set("autoUpdateFX", String(autoUpdateFX));
+
+      const query = params.toString();
+      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+    }, 400);
+
+    return () => window.clearTimeout(id);
   }, [
     autoUpdateFX,
     carPrices,
@@ -250,31 +394,41 @@ const Calculator = () => {
 
   // Fetch exchange rates
   const handleFetchRates = useCallback(async () => {
+    if (fetchInFlightRef.current || !isMountedRef.current) return;
+    fetchInFlightRef.current = true;
     setIsLoadingRates(true);
-    const rates = await fetchExchangeRates();
-    setKrwToEurRate(rates.krwToEur);
-    setUsdToEurRate(rates.usdToEur);
-    if (!rates.isFallback) {
-      setLastValidRates({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
-      setLastUpdatedAt(rates.fetchedAt || Date.now());
-      localStorage.setItem(
-        FX_LAST_SUCCESS_KEY,
-        JSON.stringify({
-          krwToEur: rates.krwToEur,
-          usdToEur: rates.usdToEur,
-          fetchedAt: rates.fetchedAt || Date.now(),
-        }),
-      );
-    }
+    try {
+      const rates = await fetchExchangeRates();
+      if (!isMountedRef.current) return;
+      setKrwToEurRate(rates.krwToEur);
+      setUsdToEurRate(rates.usdToEur);
+      if (!rates.isFallback) {
+        setLastValidRates({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
+        const fetchedAt = rates.fetchedAt || Date.now();
+        setLastUpdatedAt(fetchedAt);
+        localStorage.setItem(
+          FX_LAST_SUCCESS_KEY,
+          JSON.stringify({
+            krwToEur: rates.krwToEur,
+            usdToEur: rates.usdToEur,
+            fetchedAt,
+          }),
+        );
+      }
 
-    toast({
-      title: rates.isFallback ? "Using fallback rates" : "Rates updated",
-      description: rates.isFallback
-        ? "Live rates were unavailable or invalid; using safe defaults."
-        : `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
-      variant: rates.isFallback ? "destructive" : "default",
-    });
-    setIsLoadingRates(false);
+      toast({
+        title: rates.isFallback ? "Using fallback rates" : "Rates updated",
+        description: rates.isFallback
+          ? "Live rates were unavailable or invalid; using safe defaults."
+          : `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
+        variant: rates.isFallback ? "destructive" : "default",
+      });
+    } finally {
+      fetchInFlightRef.current = false;
+      if (isMountedRef.current) {
+        setIsLoadingRates(false);
+      }
+    }
   }, [toast]);
 
   // Fetch latest exchange rates on initial load
@@ -302,7 +456,7 @@ const Calculator = () => {
 
   // Track last valid rates from manual edits within acceptable ranges
   useEffect(() => {
-    if (!isHydratedRef.current) return;
+    if (!hasMountedRef.current) return;
     const krwValid =
       krwToEurRate >= FX_VALID_RANGES.krwToEur.min &&
       krwToEurRate <= FX_VALID_RANGES.krwToEur.max;
@@ -324,7 +478,6 @@ const Calculator = () => {
   // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;
   const allPricesFilled = completedCars === numberOfCars;
-  const completionPercent = Math.round((completedCars / numberOfCars) * 100);
 
   // Handle calculate button click
   const handleCalculate = () => {
@@ -408,32 +561,32 @@ const Calculator = () => {
           <div className="space-y-5">
             <VehicleDetailsSection
               scenario={scenario}
-              setScenario={setScenario}
+              setScenario={setScenarioTracked}
               numberOfCars={numberOfCars}
-              setNumberOfCars={setNumberOfCars}
+              setNumberOfCars={setNumberOfCarsTracked}
               containerType={containerType}
-              setContainerType={setContainerType}
+              setContainerType={setContainerTypeTracked}
               freightPerCar={results.freightPerCar}
               freightPerContainerEUR={results.freightPerContainerEUR}
               customsDuty={customsDuty}
-              setCustomsDuty={setCustomsDuty}
+              setCustomsDuty={setCustomsDutyTracked}
               vat={vat}
-              setVat={setVat}
+              setVat={setVatTracked}
               speditorFee={results.speditorFee}
               homologationFee={homologationFee}
-              setHomologationFee={setHomologationFee}
+              setHomologationFee={setHomologationFeeTracked}
               translationPages={translationPages}
-              setTranslationPages={setTranslationPages}
+              setTranslationPages={setTranslationPagesTracked}
               translationPerCar={results.translationPerCar}
               portAgentFeePerCar={results.portAgentFeePerCar}
               miscellaneous={miscellaneous}
-              setMiscellaneous={setMiscellaneous}
+              setMiscellaneous={setMiscellaneousTracked}
             />
 
             <CarPricesSection
               numberOfCars={numberOfCars}
               carPrices={carPrices}
-              setCarPrices={setCarPrices}
+              setCarPrices={setCarPricesTracked}
               krwToEurRate={krwToEurRate}
             />
           </div>
@@ -473,7 +626,7 @@ const Calculator = () => {
         usdToEurRate={usdToEurRate}
         containerType={containerType}
         onRecalculate={handleRecalculate}
-        onScenarioChange={setScenario}
+        onScenarioChange={setScenarioTracked}
       />
 
       <BottomSheet open={isRatesSheetOpen} onOpenChange={setIsRatesSheetOpen}>
@@ -490,19 +643,19 @@ const Calculator = () => {
           <div onTouchStart={handleRatesTouchStart} onTouchEnd={handleRatesTouchEnd}>
             <CurrencyRatesSection
               autoUpdateFX={autoUpdateFX}
-              setAutoUpdateFX={setAutoUpdateFX}
+              setAutoUpdateFX={setAutoUpdateFXTracked}
               isLoadingRates={isLoadingRates}
               onRefreshRates={handleFetchRates}
               krwToEurRate={krwToEurRate}
-              setKrwToEurRate={setKrwToEurRate}
+              setKrwToEurRate={setKrwToEurRateTracked}
               usdToEurRate={usdToEurRate}
-              setUsdToEurRate={setUsdToEurRate}
+              setUsdToEurRate={setUsdToEurRateTracked}
               lastUpdatedAt={lastUpdatedAt}
               lastValidRates={lastValidRates}
               onRevertToLastValid={() => {
                 if (lastValidRates) {
-                  setKrwToEurRate(lastValidRates.krwToEur);
-                  setUsdToEurRate(lastValidRates.usdToEur);
+                  setKrwToEurRateTracked(lastValidRates.krwToEur);
+                  setUsdToEurRateTracked(lastValidRates.usdToEur);
                 }
               }}
             />
