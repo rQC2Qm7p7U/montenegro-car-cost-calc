@@ -22,7 +22,7 @@ const clampNonNegative = (value: number) =>
   !Number.isFinite(value) || value < 0 ? 0 : value;
 
 const formatEuroInput = (value: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
 
 export const CarPricesSection = ({
   numberOfCars,
@@ -36,19 +36,19 @@ export const CarPricesSection = ({
   const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
 
   const handlePriceChange = (index: number, value: string) => {
-    const normalized = value.replace(/\s/g, "").replace(",", ".");
-    const numValue = normalized === "" ? 0 : Number(normalized);
-    const safeValue = clampNonNegative(numValue);
+    const digitsOnly = value.replace(/[^\d]/g, "");
+    const intValue = digitsOnly === "" ? 0 : Math.trunc(Number(digitsOnly));
+    const safeValue = clampNonNegative(intValue);
 
     setEurInputValues((prev) => {
       const next = [...prev];
-      next[index] = normalized === "" ? "" : formatEuroInput(safeValue);
+      next[index] = digitsOnly === "" ? "" : formatEuroInput(safeValue);
       return next;
     });
 
     setCarPrices((prev) => {
       const next = [...prev];
-      next[index] = safeValue;
+      next[index] = digitsOnly === "" ? 0 : safeValue;
       return next;
     });
   };
@@ -169,7 +169,7 @@ export const CarPricesSection = ({
             {completedCount}/{numberOfCars} entered
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Expected format: 12,345.67 €
+            Expected format: 12,345 €
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -261,11 +261,11 @@ export const CarPricesSection = ({
                 <Input
                   id={`carPrice${index}`}
                   type="text"
-                  inputMode="decimal"
+                  inputMode="numeric"
                   value={eurInputValues[index] ?? ""}
                   onChange={(e) => handlePriceChange(index, e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  placeholder="12,345.67"
+                  placeholder="12,345"
                   className="input-focus-ring bg-background/50"
                 />
               ) : (
