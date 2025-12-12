@@ -189,7 +189,7 @@ export const ResultsBottomSheet = ({
                     <div className="min-w-0">
                       <span className="text-sm block truncate">Freight ({containerType})</span>
                       <p className="text-[10px] text-muted-foreground">
-                        ${containerInfo.freightUSD} + €{containerInfo.localEUR}
+                        ${containerInfo.freightUSD.toLocaleString('en-US')}
                       </p>
                     </div>
                   </div>
