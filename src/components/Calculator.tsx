@@ -15,11 +15,20 @@ const PERSIST_KEY = "car-import-state-v1";
 const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
 const FX_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 
+const DEFAULTS = {
+  customsDuty: 5,
+  vat: 21,
+  translationPages: 3,
+  homologationFee: 250,
+  miscellaneous: 0,
+};
+
 const Calculator = () => {
   const { toast } = useToast();
   const [isResultsOpen, setIsResultsOpen] = useState(false);
   const formChangeRef = useRef(false);
   const isHydratedRef = useRef(false);
+  const initialRatesFetchedRef = useRef(false);
 
   // Car prices (array of EUR values)
   const [carPrices, setCarPrices] = useState<number[]>([0]);
@@ -33,11 +42,11 @@ const Calculator = () => {
   const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(null);
 
   // Other costs
-  const [customsDuty, setCustomsDuty] = useState<number>(5);
-  const [vat, setVat] = useState<number>(21);
-  const [translationPages, setTranslationPages] = useState<number>(3);
-  const [homologationFee, setHomologationFee] = useState<number>(250);
-  const [miscellaneous, setMiscellaneous] = useState<number>(0);
+  const [customsDuty, setCustomsDuty] = useState<number>(DEFAULTS.customsDuty);
+  const [vat, setVat] = useState<number>(DEFAULTS.vat);
+  const [translationPages, setTranslationPages] = useState<number>(DEFAULTS.translationPages);
+  const [homologationFee, setHomologationFee] = useState<number>(DEFAULTS.homologationFee);
+  const [miscellaneous, setMiscellaneous] = useState<number>(DEFAULTS.miscellaneous);
 
   // Other settings
   const [scenario, setScenario] = useState<"physical" | "company">("physical");
@@ -115,15 +124,15 @@ const Calculator = () => {
 
       setKrwToEurRate(parseNumber(merged.krwToEurRate, krwToEurRate));
       setUsdToEurRate(parseNumber(merged.usdToEurRate, usdToEurRate));
-      setCustomsDuty(parseNumber(merged.customsDuty, customsDuty));
-      setVat(parseNumber(merged.vat, vat));
+      setCustomsDuty(parseNumber(merged.customsDuty, DEFAULTS.customsDuty));
+      setVat(parseNumber(merged.vat, DEFAULTS.vat));
       setTranslationPages(
-        Math.max(0, parseNumber(merged.translationPages, translationPages)),
+        Math.max(0, parseNumber(merged.translationPages, DEFAULTS.translationPages)),
       );
       setHomologationFee(
-        Math.max(0, parseNumber(merged.homologationFee, homologationFee)),
+        Math.max(0, parseNumber(merged.homologationFee, DEFAULTS.homologationFee)),
       );
-      setMiscellaneous(Math.max(0, parseNumber(merged.miscellaneous, miscellaneous)));
+      setMiscellaneous(Math.max(0, parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)));
 
       if (merged.scenario === "physical" || merged.scenario === "company") {
         setScenario(merged.scenario);
@@ -264,7 +273,14 @@ const Calculator = () => {
     setIsLoadingRates(false);
   }, [toast]);
 
-  // Auto-update exchange rates on load or when toggle is enabled
+  // Fetch latest exchange rates on initial load
+  useEffect(() => {
+    if (initialRatesFetchedRef.current) return;
+    initialRatesFetchedRef.current = true;
+    handleFetchRates();
+  }, [handleFetchRates]);
+
+  // Auto-update exchange rates when toggle is enabled
   useEffect(() => {
     if (autoUpdateFX) {
       handleFetchRates();
