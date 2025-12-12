@@ -63,6 +63,7 @@ const Calculator = () => {
       const lastFx = storedFX ? JSON.parse(storedFX) : null;
 
       const parseNumber = (value: unknown, fallback: number) => {
+        if (value === null || value === undefined || value === "") return fallback;
         const num = Number(value);
         return Number.isFinite(num) ? num : fallback;
       };
