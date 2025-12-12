@@ -6,14 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Copy, Info, Car, CheckCircle2 } from "lucide-react";
+import { Copy, Info, Car, CheckCircle2, Calculator } from "lucide-react";
 import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/currency";
+import type { CalculationResults } from "@/types/calculator";
 
 interface CarPricesSectionProps {
   numberOfCars: number;
   carPrices: number[];
   setCarPrices: Dispatch<SetStateAction<number[]>>;
   krwToEurRate: number;
+  results: CalculationResults;
 }
 
 type CurrencyMode = "eur" | "krw";
@@ -29,6 +31,7 @@ export const CarPricesSection = ({
   carPrices,
   setCarPrices,
   krwToEurRate,
+  results,
 }: CarPricesSectionProps) => {
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("eur");
   const [rawKRWMode, setRawKRWMode] = useState(false);
@@ -90,6 +93,7 @@ export const CarPricesSection = ({
   };
 
   const completedCount = carPrices.filter(p => p > 0).length;
+  const pricedCars = results.carResults.filter(car => car.carPrice > 0);
 
   // Keep KRW inputs in sync with car count
   useEffect(() => {
@@ -294,6 +298,45 @@ export const CarPricesSection = ({
             </div>
           );
         })}
+      </div>
+
+      {/* Inline preview to reduce modal hops */}
+      <div className="mt-5 rounded-xl border border-border/60 bg-background/70 p-4 shadow-inner">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Calculator className="w-4 h-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Estimates preview</span>
+          </div>
+          <span className="text-[11px] text-muted-foreground">
+            {pricedCars.length}/{numberOfCars} ready
+          </span>
+        </div>
+        {pricedCars.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Add vehicle prices to see per-car totals.</p>
+        ) : (
+          <div className="space-y-2">
+            {pricedCars.map((car) => (
+              <div key={car.carIndex} className="flex items-center justify-between text-sm rounded-lg bg-muted/40 px-3 py-2 border border-border/50">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-background/70 text-foreground border border-border/60">
+                    #{car.carIndex + 1}
+                  </span>
+                  <span>€{formatEUR(car.carPrice)}</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-semibold text-foreground">
+                    €{formatEUR(car.finalCost)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">incl. freight & taxes</p>
+                </div>
+              </div>
+            ))}
+            <div className="pt-2 mt-2 border-t border-border/50 flex items-center justify-between">
+              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Running total</span>
+              <span className="text-base font-bold text-primary">€{formatEUR(results.totalFinalCost)}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {numberOfCars > 1 && (

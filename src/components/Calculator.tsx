@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { SetStateAction } from "react";
-import { Ship, Calculator as CalcIcon, X } from "lucide-react";
+import { Ship, Calculator as CalcIcon, X, Share2, RefreshCcw, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
@@ -173,6 +173,10 @@ const Calculator = () => {
   const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(
     initialState.lastValidRates,
   );
+  const initialFxSource: "live" | "fallback" | "manual" | "restored" =
+    initialState.lastValidRates ? "restored" : "fallback";
+  const [fxSource, setFxSource] = useState<"live" | "fallback" | "manual" | "restored">(initialFxSource);
+  const fxUpdateSourceRef = useRef<"none" | "live" | "fallback" | "restored">(initialFxSource);
 
   // Other costs
   const [customsDuty, setCustomsDuty] = useState<number>(initialState.customsDuty);
@@ -399,6 +403,7 @@ const Calculator = () => {
     setIsLoadingRates(true);
     try {
       const rates = await fetchExchangeRates();
+      fxUpdateSourceRef.current = rates.isFallback ? "fallback" : "live";
       if (!isMountedRef.current) return;
       setKrwToEurRate(rates.krwToEur);
       setUsdToEurRate(rates.usdToEur);
@@ -415,6 +420,8 @@ const Calculator = () => {
           }),
         );
       }
+
+      setFxSource(rates.isFallback ? "fallback" : "live");
 
       toast({
         title: rates.isFallback ? "Using fallback rates" : "Rates updated",
@@ -465,6 +472,14 @@ const Calculator = () => {
       usdToEurRate <= FX_VALID_RANGES.usdToEur.max;
 
     if (krwValid && usdValid) {
+      const source = fxUpdateSourceRef.current;
+      if (source !== "none") {
+        setFxSource(source === "fallback" ? "fallback" : source === "live" ? "live" : "restored");
+        fxUpdateSourceRef.current = "none";
+      } else {
+        setFxSource("manual");
+      }
+
       setLastValidRates({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
       const now = Date.now();
       setLastUpdatedAt(now);
@@ -501,6 +516,37 @@ const Calculator = () => {
     ratesSheetTouchStart.current = null;
   };
 
+  const handleCopyShareLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Link copied",
+        description: "Share this configured calculator.",
+      });
+    } catch (error) {
+      const textarea = document.createElement("textarea");
+      textarea.value = url;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      toast({
+        title: "Link copied",
+        description: "Clipboard access was limited; used fallback copy.",
+      });
+    }
+  };
+
+  const renderFxUpdatedLabel = () => {
+    if (!lastUpdatedAt) return "Not updated yet";
+    const diffMs = Date.now() - lastUpdatedAt;
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes <= 0) return "Just now";
+    if (minutes === 1) return "Updated 1 min ago";
+    return `Updated ${minutes} min ago`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
       <div className="py-6 px-4 sm:px-6 lg:px-8">
@@ -511,7 +557,13 @@ const Calculator = () => {
               <div className="relative inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg hover:scale-105 transition-transform duration-300">
                 <Ship className="w-7 h-7 text-primary-foreground" />
               </div>
-              <ThemeToggle />
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" className="h-10 gap-2" onClick={handleCopyShareLink}>
+                  <Share2 className="w-4 h-4" />
+                  Copy link
+                </Button>
+                <ThemeToggle />
+              </div>
             </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
             Montenegro Car Import
@@ -536,24 +588,48 @@ const Calculator = () => {
               )}
             </div>
 
-            {/* FX summary chips (separate row) */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-              <button
-                type="button"
-                onClick={() => setIsRatesSheetOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
-              >
-                <span className="text-[11px] text-muted-foreground">1€</span>
-                ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsRatesSheetOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
-              >
-                <span className="text-[11px] text-muted-foreground">$1</span>
-                €{usdToEurRate.toFixed(4)}
-              </button>
+            {/* FX summary chips + freshness */}
+            <div className="flex flex-col items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRatesSheetOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
+                >
+                  <span className="text-[11px] text-muted-foreground">1€</span>
+                  ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRatesSheetOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
+                >
+                  <span className="text-[11px] text-muted-foreground">$1</span>
+                  €{usdToEurRate.toFixed(4)}
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/60 border border-border/60">
+                  <Clock className="w-3 h-3" />
+                  <span className="text-[11px]">{renderFxUpdatedLabel()}</span>
+                </div>
+                {fxSource === "fallback" && (
+                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-700 dark:text-amber-300">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span className="text-[11px]">Using fallback rates</span>
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-3"
+                  onClick={handleFetchRates}
+                  disabled={isLoadingRates}
+                >
+                  <RefreshCcw className={`w-4 h-4 mr-1 ${isLoadingRates ? "animate-spin" : ""}`} />
+                  Retry
+                </Button>
+              </div>
             </div>
           </header>
 
@@ -588,6 +664,7 @@ const Calculator = () => {
               carPrices={carPrices}
               setCarPrices={setCarPricesTracked}
               krwToEurRate={krwToEurRate}
+              results={results}
             />
           </div>
         </div>
@@ -654,6 +731,7 @@ const Calculator = () => {
               lastValidRates={lastValidRates}
               onRevertToLastValid={() => {
                 if (lastValidRates) {
+                  fxUpdateSourceRef.current = "restored";
                   setKrwToEurRateTracked(lastValidRates.krwToEur);
                   setUsdToEurRateTracked(lastValidRates.usdToEur);
                 }
