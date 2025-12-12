@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Ship, Calculator as CalcIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
-import { fetchExchangeRates } from "@/utils/currency";
+import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
 import { useCarImportCalculations } from "@/hooks/useCarImportCalculations";
 import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 const PERSIST_KEY = "car-import-state-v1";
+const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
+const FX_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 
 const Calculator = () => {
   const { toast } = useToast();
@@ -27,6 +29,8 @@ const Calculator = () => {
   const [usdToEurRate, setUsdToEurRate] = useState<number>(0.93);
   const [autoUpdateFX, setAutoUpdateFX] = useState<boolean>(false);
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(null);
 
   // Other costs
   const [customsDuty, setCustomsDuty] = useState<number>(5);
@@ -46,6 +50,8 @@ const Calculator = () => {
       const params = new URLSearchParams(window.location.search);
       const storedRaw = localStorage.getItem(PERSIST_KEY);
       const stored = storedRaw ? JSON.parse(storedRaw) : {};
+      const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
+      const lastFx = storedFX ? JSON.parse(storedFX) : null;
 
       const parseNumber = (value: unknown, fallback: number) => {
         const num = Number(value);
@@ -126,6 +132,11 @@ const Calculator = () => {
       setNumberOfCars(resolvedNumberOfCars);
       setContainerType(resolvedContainer);
       setAutoUpdateFX(parseBool(merged.autoUpdateFX, autoUpdateFX));
+
+      if (lastFx && Number.isFinite(lastFx.krwToEur) && Number.isFinite(lastFx.usdToEur)) {
+        setLastValidRates({ krwToEur: lastFx.krwToEur, usdToEur: lastFx.usdToEur });
+        setLastUpdatedAt(Number.isFinite(lastFx.fetchedAt) ? lastFx.fetchedAt : Date.now());
+      }
 
       isHydratedRef.current = true;
       formChangeRef.current = false;
@@ -228,6 +239,18 @@ const Calculator = () => {
     const rates = await fetchExchangeRates();
     setKrwToEurRate(rates.krwToEur);
     setUsdToEurRate(rates.usdToEur);
+    if (!rates.isFallback) {
+      setLastValidRates({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
+      setLastUpdatedAt(rates.fetchedAt || Date.now());
+      localStorage.setItem(
+        FX_LAST_SUCCESS_KEY,
+        JSON.stringify({
+          krwToEur: rates.krwToEur,
+          usdToEur: rates.usdToEur,
+          fetchedAt: rates.fetchedAt || Date.now(),
+        }),
+      );
+    }
 
     toast({
       title: rates.isFallback ? "Using fallback rates" : "Rates updated",
@@ -245,6 +268,36 @@ const Calculator = () => {
       handleFetchRates();
     }
   }, [autoUpdateFX, handleFetchRates]);
+
+  // Auto-refresh rates on an interval when enabled
+  useEffect(() => {
+    if (!autoUpdateFX) return;
+    const id = setInterval(() => {
+      handleFetchRates();
+    }, FX_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [autoUpdateFX, handleFetchRates]);
+
+  // Track last valid rates from manual edits within acceptable ranges
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    const krwValid =
+      krwToEurRate >= FX_VALID_RANGES.krwToEur.min &&
+      krwToEurRate <= FX_VALID_RANGES.krwToEur.max;
+    const usdValid =
+      usdToEurRate >= FX_VALID_RANGES.usdToEur.min &&
+      usdToEurRate <= FX_VALID_RANGES.usdToEur.max;
+
+    if (krwValid && usdValid) {
+      setLastValidRates({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
+      const now = Date.now();
+      setLastUpdatedAt(now);
+      localStorage.setItem(
+        FX_LAST_SUCCESS_KEY,
+        JSON.stringify({ krwToEur: krwToEurRate, usdToEur: usdToEurRate, fetchedAt: now }),
+      );
+    }
+  }, [krwToEurRate, usdToEurRate]);
 
   // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;
@@ -309,6 +362,14 @@ const Calculator = () => {
               setKrwToEurRate={setKrwToEurRate}
               usdToEurRate={usdToEurRate}
               setUsdToEurRate={setUsdToEurRate}
+              lastUpdatedAt={lastUpdatedAt}
+              lastValidRates={lastValidRates}
+              onRevertToLastValid={() => {
+                if (lastValidRates) {
+                  setKrwToEurRate(lastValidRates.krwToEur);
+                  setUsdToEurRate(lastValidRates.usdToEur);
+                }
+              }}
             />
 
             <VehicleDetailsSection

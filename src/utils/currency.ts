@@ -31,13 +31,15 @@ export interface ExchangeRates {
   krwToEur: number;
   usdToEur: number;
   isFallback: boolean;
+  fetchedAt?: number;
 }
 
-const FALLBACK_RATES: ExchangeRates = { krwToEur: 0.00068, usdToEur: 0.93, isFallback: true };
-const VALID_RANGES = {
+export const FX_VALID_RANGES = {
   krwToEur: { min: 0.0001, max: 0.005 },
   usdToEur: { min: 0.5, max: 2 },
-};
+} as const;
+
+const FALLBACK_RATES: ExchangeRates = { krwToEur: 0.00068, usdToEur: 0.93, isFallback: true, fetchedAt: undefined };
 
 export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
   const controller = new AbortController();
@@ -61,14 +63,14 @@ export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
     const krwToEur = 1 / eurToKrw;
     const usdToEur = 1 / eurToUsd;
 
-    const krwInRange = krwToEur >= VALID_RANGES.krwToEur.min && krwToEur <= VALID_RANGES.krwToEur.max;
-    const usdInRange = usdToEur >= VALID_RANGES.usdToEur.min && usdToEur <= VALID_RANGES.usdToEur.max;
+    const krwInRange = krwToEur >= FX_VALID_RANGES.krwToEur.min && krwToEur <= FX_VALID_RANGES.krwToEur.max;
+    const usdInRange = usdToEur >= FX_VALID_RANGES.usdToEur.min && usdToEur <= FX_VALID_RANGES.usdToEur.max;
 
     if (!krwInRange || !usdInRange) {
       throw new Error(`Rates out of expected range: KRW/EUR=${krwToEur}, USD/EUR=${usdToEur}`);
     }
 
-    return { krwToEur, usdToEur, isFallback: false };
+    return { krwToEur, usdToEur, isFallback: false, fetchedAt: Date.now() };
   } catch (error) {
     console.error('Error fetching exchange rates, using fallbacks:', error);
     return { ...FALLBACK_RATES };

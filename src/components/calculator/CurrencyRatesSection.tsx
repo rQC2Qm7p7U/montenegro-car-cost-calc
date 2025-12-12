@@ -14,6 +14,9 @@ interface CurrencyRatesSectionProps {
   setKrwToEurRate: (value: number) => void;
   usdToEurRate: number;
   setUsdToEurRate: (value: number) => void;
+  lastUpdatedAt: number | null;
+  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  onRevertToLastValid: () => void;
 }
 
 export const CurrencyRatesSection = ({
@@ -25,6 +28,9 @@ export const CurrencyRatesSection = ({
   setKrwToEurRate,
   usdToEurRate,
   setUsdToEurRate,
+  lastUpdatedAt,
+  lastValidRates,
+  onRevertToLastValid,
 }: CurrencyRatesSectionProps) => {
   const KRW_RANGE = { min: 0.0001, max: 0.005 };
   const USD_RANGE = { min: 0.5, max: 2 };
@@ -40,6 +46,10 @@ export const CurrencyRatesSection = ({
   const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, value));
 
+  const updatedLabel = lastUpdatedAt
+    ? new Date(lastUpdatedAt).toLocaleString()
+    : "No data";
+
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
       {/* Header with icon */}
@@ -52,7 +62,9 @@ export const CurrencyRatesSection = ({
             <h2 className="text-lg font-semibold text-foreground">
               Exchange Rates
             </h2>
-            <p className="text-xs text-muted-foreground">KRW & USD to EUR</p>
+            <p className="text-xs text-muted-foreground">
+              KRW & USD to EUR · Updated: {updatedLabel}
+            </p>
           </div>
         </div>
         <Button
@@ -138,6 +150,15 @@ export const CurrencyRatesSection = ({
             onCheckedChange={setAutoUpdateFX}
           />
         </div>
+
+        {(krwInvalid || usdInvalid) && lastValidRates && (
+          <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/30">
+            <p className="text-xs text-destructive">Out of range. Restore last successful rates?</p>
+            <Button size="sm" variant="outline" onClick={onRevertToLastValid}>
+              Revert
+            </Button>
+          </div>
+        )}
       </div>
     </Card>
   );
