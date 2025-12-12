@@ -47,6 +47,8 @@ const Calculator = () => {
   const [translationPages, setTranslationPages] = useState<number>(DEFAULTS.translationPages);
   const [homologationFee, setHomologationFee] = useState<number>(DEFAULTS.homologationFee);
   const [miscellaneous, setMiscellaneous] = useState<number>(DEFAULTS.miscellaneous);
+  const [isRatesSheetOpen, setIsRatesSheetOpen] = useState(false);
+  const ratesSheetTouchStart = useRef<number | null>(null);
 
   // Other settings
   const [scenario, setScenario] = useState<"physical" | "company">("physical");
@@ -334,6 +336,17 @@ const Calculator = () => {
     setIsResultsOpen(false);
   };
 
+  const handleRatesTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    ratesSheetTouchStart.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleRatesTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (ratesSheetTouchStart.current === null) return;
+    const deltaX = (e.changedTouches[0]?.clientX ?? 0) - ratesSheetTouchStart.current;
+    if (deltaX < -40) setIsRatesSheetOpen(false);
+    ratesSheetTouchStart.current = null;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
       <div className="py-6 px-4 sm:px-6 lg:px-8">
@@ -346,12 +359,12 @@ const Calculator = () => {
               </div>
               <ThemeToggle />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
-              Montenegro Car Import
-            </h1>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Calculate import costs for vehicles from Korea
-            </p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
+            Montenegro Car Import
+          </h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Calculate import costs for vehicles from Korea
+          </p>
             
             {/* Quick status badges */}
             <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
@@ -367,14 +380,26 @@ const Calculator = () => {
                   {completedCars}/{numberOfCars} priced
                 </Badge>
               )}
-              <Badge variant="outline" className="gap-1.5">
+            </div>
+
+            {/* FX summary chips (separate row) */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setIsRatesSheetOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
+              >
                 <span className="text-[11px] text-muted-foreground">1€</span>
                 ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-              </Badge>
-              <Badge variant="outline" className="gap-1.5">
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsRatesSheetOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
+              >
                 <span className="text-[11px] text-muted-foreground">$1</span>
                 €{usdToEurRate.toFixed(4)}
-              </Badge>
+              </button>
             </div>
           </header>
 
@@ -409,25 +434,6 @@ const Calculator = () => {
               carPrices={carPrices}
               setCarPrices={setCarPrices}
               krwToEurRate={krwToEurRate}
-            />
-
-            <CurrencyRatesSection
-              autoUpdateFX={autoUpdateFX}
-              setAutoUpdateFX={setAutoUpdateFX}
-              isLoadingRates={isLoadingRates}
-              onRefreshRates={handleFetchRates}
-              krwToEurRate={krwToEurRate}
-              setKrwToEurRate={setKrwToEurRate}
-              usdToEurRate={usdToEurRate}
-              setUsdToEurRate={setUsdToEurRate}
-              lastUpdatedAt={lastUpdatedAt}
-              lastValidRates={lastValidRates}
-              onRevertToLastValid={() => {
-                if (lastValidRates) {
-                  setKrwToEurRate(lastValidRates.krwToEur);
-                  setUsdToEurRate(lastValidRates.usdToEur);
-                }
-              }}
             />
           </div>
         </div>
@@ -468,6 +474,42 @@ const Calculator = () => {
         onRecalculate={handleRecalculate}
         onScenarioChange={setScenario}
       />
+
+      <BottomSheet open={isRatesSheetOpen} onOpenChange={setIsRatesSheetOpen}>
+        <BottomSheetHeader className="flex items-center justify-between pb-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Exchange Rates</p>
+            <h3 className="text-lg font-semibold text-foreground">KRW & USD to EUR</h3>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setIsRatesSheetOpen(false)}>
+            <X className="w-5 h-5" />
+          </Button>
+        </BottomSheetHeader>
+        <BottomSheetBody
+          className="pt-2"
+          onTouchStart={handleRatesTouchStart}
+          onTouchEnd={handleRatesTouchEnd}
+        >
+          <CurrencyRatesSection
+            autoUpdateFX={autoUpdateFX}
+            setAutoUpdateFX={setAutoUpdateFX}
+            isLoadingRates={isLoadingRates}
+            onRefreshRates={handleFetchRates}
+            krwToEurRate={krwToEurRate}
+            setKrwToEurRate={setKrwToEurRate}
+            usdToEurRate={usdToEurRate}
+            setUsdToEurRate={setUsdToEurRate}
+            lastUpdatedAt={lastUpdatedAt}
+            lastValidRates={lastValidRates}
+            onRevertToLastValid={() => {
+              if (lastValidRates) {
+                setKrwToEurRate(lastValidRates.krwToEur);
+                setUsdToEurRate(lastValidRates.usdToEur);
+              }
+            }}
+          />
+        </BottomSheetBody>
+      </BottomSheet>
     </div>
   );
 };
