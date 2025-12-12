@@ -56,10 +56,19 @@ export const VehicleDetailsSection = ({
   setMiscellaneous,
 }: VehicleDetailsSectionProps) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const parseNumber = (value: string) => Number(value.replace(",", "."));
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
+  const displayMoney = (value: number) =>
+    Math.round(value).toLocaleString("de-DE");
   
   const containerInfo = containerType === "20ft" 
     ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }
     : { maxCars: 4, freightUSD: 4150, localEUR: 420 };
+
+  const customsInvalid = customsDuty < 0 || customsDuty > 30;
+  const vatInvalid = vat < 0 || vat > 25;
+  const miscInvalid = miscellaneous < 0;
 
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card" style={{ animationDelay: "0.1s" }}>
@@ -157,7 +166,7 @@ export const VehicleDetailsSection = ({
         {/* Freight summary */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
           <span className="text-sm text-muted-foreground">Freight per car</span>
-          <span className="text-lg font-bold text-primary">€{freightPerCar.toFixed(2)}</span>
+          <span className="text-lg font-bold text-primary">€{displayMoney(freightPerCar)}</span>
         </div>
 
         {/* Advanced settings - collapsible */}
@@ -178,9 +187,15 @@ export const VehicleDetailsSection = ({
                   id="customsDuty"
                   type="number"
                   value={customsDuty}
-                  onChange={(e) => setCustomsDuty(Number(e.target.value))}
-                  className="mt-1.5 input-focus-ring"
+                  min={0}
+                  max={30}
+                  step="0.1"
+                  onChange={(e) => setCustomsDuty(clamp(parseNumber(e.target.value), 0, 30))}
+                  className={`mt-1.5 input-focus-ring ${customsInvalid ? "border-destructive/60" : ""}`}
                 />
+                {customsInvalid && (
+                  <p className="text-xs text-destructive mt-1">0–30% expected</p>
+                )}
               </div>
               <div>
                 <Label htmlFor="vat" className="text-sm font-medium">
@@ -190,9 +205,15 @@ export const VehicleDetailsSection = ({
                   id="vat"
                   type="number"
                   value={vat}
-                  onChange={(e) => setVat(Number(e.target.value))}
-                  className="mt-1.5 input-focus-ring"
+                  min={0}
+                  max={25}
+                  step="0.1"
+                  onChange={(e) => setVat(clamp(parseNumber(e.target.value), 0, 25))}
+                  className={`mt-1.5 input-focus-ring ${vatInvalid ? "border-destructive/60" : ""}`}
                 />
+                {vatInvalid && (
+                  <p className="text-xs text-destructive mt-1">0–25% expected</p>
+                )}
               </div>
             </div>
 
@@ -204,7 +225,7 @@ export const VehicleDetailsSection = ({
                 <Input
                   id="speditorFee"
                   type="text"
-                  value={speditorFee.toFixed(2)}
+                  value={displayMoney(speditorFee)}
                   readOnly
                   className="mt-1.5 bg-muted/50 cursor-not-allowed text-muted-foreground"
                 />
@@ -218,7 +239,8 @@ export const VehicleDetailsSection = ({
                   id="homologationFee"
                   type="number"
                   value={homologationFee}
-                  onChange={(e) => setHomologationFee(Number(e.target.value))}
+                  min={0}
+                  onChange={(e) => setHomologationFee(Math.max(0, parseNumber(e.target.value)))}
                   className="mt-1.5 input-focus-ring"
                 />
               </div>
@@ -234,11 +256,11 @@ export const VehicleDetailsSection = ({
                   type="number"
                   min="0"
                   value={translationPages}
-                  onChange={(e) => setTranslationPages(Math.max(0, Number(e.target.value)))}
+                  onChange={(e) => setTranslationPages(Math.max(0, parseNumber(e.target.value)))}
                   className="mt-1.5 input-focus-ring"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  35€ × {translationPages} = €{translationPerCar.toFixed(2)}/car
+                  35€ × {translationPages} = €{displayMoney(translationPerCar)}/car
                 </p>
               </div>
               <div>
@@ -248,7 +270,7 @@ export const VehicleDetailsSection = ({
                 <Input
                   id="portAgentFee"
                   type="text"
-                  value={portAgentFeePerCar.toFixed(2)}
+                  value={displayMoney(portAgentFeePerCar)}
                   readOnly
                   className="mt-1.5 bg-muted/50 cursor-not-allowed text-muted-foreground"
                 />
@@ -266,9 +288,13 @@ export const VehicleDetailsSection = ({
                 id="miscellaneous"
                 type="number"
                 value={miscellaneous}
-                onChange={(e) => setMiscellaneous(Number(e.target.value))}
-                className="mt-1.5 input-focus-ring"
+                min={0}
+                onChange={(e) => setMiscellaneous(Math.max(0, parseNumber(e.target.value)))}
+                className={`mt-1.5 input-focus-ring ${miscInvalid ? "border-destructive/60" : ""}`}
               />
+              {miscInvalid && (
+                <p className="text-xs text-destructive mt-1">Must be ≥ 0</p>
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

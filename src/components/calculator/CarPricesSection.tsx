@@ -18,6 +18,12 @@ interface CarPricesSectionProps {
 
 type CurrencyMode = "eur" | "krw";
 
+const clampNonNegative = (value: number) =>
+  !Number.isFinite(value) || value < 0 ? 0 : value;
+
+const formatEuroInput = (value: number) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+
 export const CarPricesSection = ({
   numberOfCars,
   carPrices,
@@ -27,13 +33,24 @@ export const CarPricesSection = ({
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("eur");
   const [rawKRWMode, setRawKRWMode] = useState(false);
   const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
+  const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
 
   const handlePriceChange = (index: number, value: string) => {
-    const cleaned = value.replace(/[^\d]/g, "");
-    const numValue = cleaned === "" ? 0 : Number(cleaned);
-    const newPrices = [...carPrices];
-    newPrices[index] = numValue;
-    setCarPrices(newPrices);
+    const normalized = value.replace(/\s/g, "").replace(",", ".");
+    const numValue = normalized === "" ? 0 : Number(normalized);
+    const safeValue = clampNonNegative(numValue);
+
+    setEurInputValues((prev) => {
+      const next = [...prev];
+      next[index] = normalized === "" ? "" : formatEuroInput(safeValue);
+      return next;
+    });
+
+    setCarPrices((prev) => {
+      const next = [...prev];
+      next[index] = safeValue;
+      return next;
+    });
   };
 
   const handleKRWChange = (index: number, value: string) => {
@@ -45,11 +62,17 @@ export const CarPricesSection = ({
     // Convert KRW to EUR and update carPrices
     const parsedKRW = parseKRWInput(cleaned);
     const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
-    const eurValue = convertKRWToEUR(actualKRW, krwToEurRate);
+    const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
     
     const newPrices = [...carPrices];
-    newPrices[index] = Math.round(eurValue);
+    newPrices[index] = eurValue;
     setCarPrices(newPrices);
+
+    setEurInputValues((prev) => {
+      const next = [...prev];
+      next[index] = eurValue ? formatEuroInput(eurValue) : "";
+      return next;
+    });
   };
 
   const setAllToSamePrice = () => {
@@ -60,6 +83,9 @@ export const CarPricesSection = ({
       if (currencyMode === "krw" && krwInputValues[0]) {
         setKrwInputValues(Array(numberOfCars).fill(krwInputValues[0]));
       }
+      if (currencyMode === "eur" && eurInputValues[0]) {
+        setEurInputValues(Array(numberOfCars).fill(eurInputValues[0]));
+      }
     }
   };
 
@@ -67,6 +93,16 @@ export const CarPricesSection = ({
 
   // Keep KRW inputs in sync with car count
   useEffect(() => {
+    setEurInputValues((prev) => {
+      if (prev.length < numberOfCars) {
+        return [...prev, ...Array(numberOfCars - prev.length).fill("")];
+      }
+      if (prev.length > numberOfCars) {
+        return prev.slice(0, numberOfCars);
+      }
+      return prev;
+    });
+
     setKrwInputValues((prev) => {
       if (prev.length < numberOfCars) {
         return [...prev, ...Array(numberOfCars - prev.length).fill("")];
@@ -78,6 +114,19 @@ export const CarPricesSection = ({
     });
   }, [numberOfCars]);
 
+  // Keep EUR inputs in sync when values change externally (e.g., hydration)
+  useEffect(() => {
+    setEurInputValues((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < numberOfCars; i += 1) {
+        if (carPrices[i] > 0 && (!next[i] || next[i] === "0")) {
+          next[i] = formatEuroInput(carPrices[i]);
+        }
+      }
+      return next.slice(0, numberOfCars);
+    });
+  }, [carPrices, numberOfCars]);
+
   // Recalculate EUR prices when KRW rate or input mode changes
   useEffect(() => {
     if (!krwInputValues.some(Boolean)) return;
@@ -87,10 +136,21 @@ export const CarPricesSection = ({
         if (!value) return;
         const parsedKRW = parseKRWInput(value);
         const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
-        const eurValue = convertKRWToEUR(actualKRW, krwToEurRate);
-        updated[index] = Math.round(eurValue);
+        const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
+        updated[index] = eurValue;
       });
       return updated;
+    });
+    setEurInputValues((prev) => {
+      const next = [...prev];
+      krwInputValues.forEach((value, index) => {
+        if (!value) return;
+        const parsedKRW = parseKRWInput(value);
+        const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
+        const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
+        next[index] = eurValue ? formatEuroInput(eurValue) : "";
+      });
+      return next;
     });
   }, [krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
 
@@ -107,6 +167,9 @@ export const CarPricesSection = ({
           </h2>
           <p className="text-xs text-muted-foreground">
             {completedCount}/{numberOfCars} entered
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            Expected format: 12,345.67 €
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -199,10 +262,10 @@ export const CarPricesSection = ({
                   id={`carPrice${index}`}
                   type="text"
                   inputMode="decimal"
-                  value={carPrices[index] > 0 ? carPrices[index].toLocaleString("en-US") : ""}
+                  value={eurInputValues[index] ?? ""}
                   onChange={(e) => handlePriceChange(index, e.target.value)}
                   onFocus={(e) => e.target.select()}
-                  placeholder="Enter price..."
+                  placeholder="12,345.67"
                   className="input-focus-ring bg-background/50"
                 />
               ) : (

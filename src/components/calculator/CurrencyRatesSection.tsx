@@ -26,6 +26,20 @@ export const CurrencyRatesSection = ({
   usdToEurRate,
   setUsdToEurRate,
 }: CurrencyRatesSectionProps) => {
+  const KRW_RANGE = { min: 0.0001, max: 0.005 };
+  const USD_RANGE = { min: 0.5, max: 2 };
+
+  const krwInvalid = krwToEurRate < KRW_RANGE.min || krwToEurRate > KRW_RANGE.max;
+  const usdInvalid = usdToEurRate < USD_RANGE.min || usdToEurRate > USD_RANGE.max;
+
+  const safeNumber = (value: string) => {
+    const num = Number(value.replace(",", "."));
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const clamp = (value: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, value));
+
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
       {/* Header with icon */}
@@ -65,12 +79,23 @@ export const CurrencyRatesSection = ({
               type="number"
               step="0.000001"
               value={krwToEurRate}
-              onChange={(e) => setKrwToEurRate(Number(e.target.value))}
-              className="input-focus-ring bg-background/50 h-9 text-sm"
+              min={KRW_RANGE.min}
+              max={KRW_RANGE.max}
+              onChange={(e) =>
+                setKrwToEurRate(clamp(safeNumber(e.target.value), KRW_RANGE.min, KRW_RANGE.max))
+              }
+              className={`input-focus-ring bg-background/50 h-9 text-sm ${
+                krwInvalid ? "border-destructive/60" : ""
+              }`}
             />
             <p className="text-xs text-primary font-medium mt-2">
               1€ = ₩{(1 / krwToEurRate).toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </p>
+            {krwInvalid && (
+              <p className="text-[11px] text-destructive mt-1">
+                Expected range: {KRW_RANGE.min}–{KRW_RANGE.max}
+              </p>
+            )}
           </div>
 
           <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
@@ -82,12 +107,23 @@ export const CurrencyRatesSection = ({
               type="number"
               step="0.01"
               value={usdToEurRate}
-              onChange={(e) => setUsdToEurRate(Number(e.target.value))}
-              className="input-focus-ring bg-background/50 h-9 text-sm"
+              min={USD_RANGE.min}
+              max={USD_RANGE.max}
+              onChange={(e) =>
+                setUsdToEurRate(clamp(safeNumber(e.target.value), USD_RANGE.min, USD_RANGE.max))
+              }
+              className={`input-focus-ring bg-background/50 h-9 text-sm ${
+                usdInvalid ? "border-destructive/60" : ""
+              }`}
             />
             <p className="text-xs text-primary font-medium mt-2">
               $1 = €{usdToEurRate.toFixed(4)}
             </p>
+            {usdInvalid && (
+              <p className="text-[11px] text-destructive mt-1">
+                Expected range: {USD_RANGE.min}–{USD_RANGE.max}
+              </p>
+            )}
           </div>
         </div>
 

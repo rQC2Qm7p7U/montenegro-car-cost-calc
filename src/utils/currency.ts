@@ -6,9 +6,9 @@ export const formatKRW = (value: number): string => {
 
 export const formatEUR = (value: number): string => {
   return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(value));
 };
 
 export const parseKRWInput = (input: string): number => {
