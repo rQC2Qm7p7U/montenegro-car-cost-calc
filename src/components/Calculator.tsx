@@ -367,30 +367,19 @@ const Calculator = () => {
                   {completedCars}/{numberOfCars} priced
                 </Badge>
               )}
+              <Badge variant="outline" className="gap-1.5">
+                <span className="text-[11px] text-muted-foreground">1€</span>
+                ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              </Badge>
+              <Badge variant="outline" className="gap-1.5">
+                <span className="text-[11px] text-muted-foreground">$1</span>
+                €{usdToEurRate.toFixed(4)}
+              </Badge>
             </div>
           </header>
 
           {/* Input Form - Single column layout */}
           <div className="space-y-5">
-            <CurrencyRatesSection
-              autoUpdateFX={autoUpdateFX}
-              setAutoUpdateFX={setAutoUpdateFX}
-              isLoadingRates={isLoadingRates}
-              onRefreshRates={handleFetchRates}
-              krwToEurRate={krwToEurRate}
-              setKrwToEurRate={setKrwToEurRate}
-              usdToEurRate={usdToEurRate}
-              setUsdToEurRate={setUsdToEurRate}
-              lastUpdatedAt={lastUpdatedAt}
-              lastValidRates={lastValidRates}
-              onRevertToLastValid={() => {
-                if (lastValidRates) {
-                  setKrwToEurRate(lastValidRates.krwToEur);
-                  setUsdToEurRate(lastValidRates.usdToEur);
-                }
-              }}
-            />
-
             <VehicleDetailsSection
               scenario={scenario}
               setScenario={setScenario}
@@ -420,6 +409,25 @@ const Calculator = () => {
               carPrices={carPrices}
               setCarPrices={setCarPrices}
               krwToEurRate={krwToEurRate}
+            />
+
+            <CurrencyRatesSection
+              autoUpdateFX={autoUpdateFX}
+              setAutoUpdateFX={setAutoUpdateFX}
+              isLoadingRates={isLoadingRates}
+              onRefreshRates={handleFetchRates}
+              krwToEurRate={krwToEurRate}
+              setKrwToEurRate={setKrwToEurRate}
+              usdToEurRate={usdToEurRate}
+              setUsdToEurRate={setUsdToEurRate}
+              lastUpdatedAt={lastUpdatedAt}
+              lastValidRates={lastValidRates}
+              onRevertToLastValid={() => {
+                if (lastValidRates) {
+                  setKrwToEurRate(lastValidRates.krwToEur);
+                  setUsdToEurRate(lastValidRates.usdToEur);
+                }
+              }}
             />
           </div>
         </div>
