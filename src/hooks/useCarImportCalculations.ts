@@ -40,8 +40,8 @@ export const useCarImportCalculations = (
     const freightPerContainerEUR = freightUSD * usdToEurRate + localCostsEUR;
     const freightPerCar = freightPerContainerEUR / numberOfCars;
 
-    // Port & Agent Fee: (420 base ÷ numberOfCars) + 250 per car
-    const portAgentFeePerCar = (420 / numberOfCars) + 250;
+    // Port & Agent Fee: (localCostsEUR ÷ numberOfCars) + 250 per car
+    const portAgentFeePerCar = (localCostsEUR / numberOfCars) + 250;
 
     // Translation: translationPages × 35 per car
     const translationPerCar = translationPages * 35;
