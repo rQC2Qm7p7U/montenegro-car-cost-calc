@@ -53,16 +53,16 @@ export const CurrencyRatesSection = ({
     : "No data";
 
   return (
-    <Card className="p-4 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
+    <Card className="p-3 sm:p-4 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
       {/* Compact header */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
-              <Coins className="w-4 h-4 text-primary" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
+              <Coins className="w-4 h-4 text-primary/90" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-foreground">Exchange Rates</h2>
+              <h2 className="text-sm font-semibold text-foreground">Exchange Rates</h2>
               <p className="text-[11px] text-muted-foreground">Updated: {updatedLabel}</p>
             </div>
           </div>
@@ -72,19 +72,21 @@ export const CurrencyRatesSection = ({
               size="sm"
               onClick={onRefreshRates}
               disabled={isLoadingRates}
-              className="h-8 gap-2 px-3"
+              className="h-8 gap-1.5 px-2 sm:px-3"
             >
               <RefreshCw className={`w-4 h-4 ${isLoadingRates ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">{isLoadingRates ? "Loading..." : "Refresh"}</span>
+              <span className="hidden sm:inline text-xs">
+                {isLoadingRates ? "Loading..." : "Refresh"}
+              </span>
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowDetails((prev) => !prev)}
-              className="h-8 gap-2 px-2"
+              className="h-8 gap-1.5 px-2"
             >
               <SlidersHorizontal className="w-4 h-4" />
-              <span className="text-sm">{showDetails ? "Hide" : "Edit"}</span>
+              <span className="text-xs sm:text-sm">{showDetails ? "Hide" : "Edit"}</span>
               <ChevronDown
                 className={`w-4 h-4 transition-transform ${showDetails ? "rotate-180" : ""}`}
               />
@@ -94,22 +96,22 @@ export const CurrencyRatesSection = ({
 
         {/* Summary chips */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-muted/40 text-sm">
-            <span className="text-muted-foreground text-[12px]">1€</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-muted/50 text-xs sm:text-sm">
+            <span className="text-muted-foreground text-[11px]">1€</span>
             <span className="font-semibold">₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-muted/40 text-sm">
-            <span className="text-muted-foreground text-[12px]">$1</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-muted/50 text-xs sm:text-sm">
+            <span className="text-muted-foreground text-[11px]">$1</span>
             <span className="font-semibold">€{usdToEurRate.toFixed(4)}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-full bg-muted/40 text-sm">
-            <span className="text-muted-foreground text-[12px]">Auto-update</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-muted/50 text-xs">
             <Switch
               id="autoUpdateFX"
               checked={autoUpdateFX}
               onCheckedChange={setAutoUpdateFX}
               className="scale-90"
             />
+            <span className="text-muted-foreground text-[11px] sm:text-xs">Auto</span>
           </div>
         </div>
       </div>
