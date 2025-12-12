@@ -37,6 +37,7 @@ interface ResultsBottomSheetProps {
   usdToEurRate: number;
   containerType: "20ft" | "40ft";
   onRecalculate: () => void;
+  onScenarioChange: (scenario: "physical" | "company") => void;
 }
 
 export const ResultsBottomSheet = ({
@@ -51,6 +52,7 @@ export const ResultsBottomSheet = ({
   usdToEurRate,
   containerType,
   onRecalculate,
+  onScenarioChange,
 }: ResultsBottomSheetProps) => {
   const formatEUR = (value: number) => Math.round(value).toLocaleString('de-DE');
 
@@ -62,6 +64,10 @@ export const ResultsBottomSheet = ({
   const avgFinalCost = carsWithPrices.length > 0 
     ? results.totalFinalCost / carsWithPrices.length 
     : 0;
+
+  const physicalTotal = results.totalFinalCost;
+  const companyNet = results.totalFinalCost - results.totalVAT;
+  const vatRefundTotal = results.totalVAT;
 
   const handleExportPDF = () => {
     try {
@@ -106,6 +112,51 @@ export const ResultsBottomSheet = ({
 
       <BottomSheetBody className="pt-4">
         <div className="space-y-5">
+          {/* SECTION 0: SCENARIO COMPARE */}
+          <Card className="p-4 border-primary/30">
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Physical vs Company</h3>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={scenario === "physical" ? "default" : "outline"}
+                  onClick={() => onScenarioChange("physical")}
+                  className="h-8"
+                >
+                  Physical
+                </Button>
+                <Button
+                  size="sm"
+                  variant={scenario === "company" ? "default" : "outline"}
+                  onClick={() => onScenarioChange("company")}
+                  className="h-8"
+                >
+                  Company
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
+                <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Physical</p>
+                <p className="text-xl font-bold text-foreground">€{formatEUR(physicalTotal)}</p>
+                <p className="text-[11px] text-muted-foreground">With VAT</p>
+              </div>
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                <p className="text-[11px] text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">Company</p>
+                <p className="text-xl font-bold text-green-700 dark:text-green-400">€{formatEUR(companyNet)}</p>
+                <p className="text-[11px] text-green-700 dark:text-green-400">VAT refund applied</p>
+              </div>
+              <div className="p-3 rounded-lg bg-primary/5 border border-primary/30">
+                <p className="text-[11px] text-primary uppercase tracking-wide mb-1">Savings</p>
+                <p className="text-xl font-bold text-primary">€{formatEUR(Math.max(0, vatRefundTotal))}</p>
+                <p className="text-[11px] text-muted-foreground">Refunded VAT</p>
+              </div>
+            </div>
+          </Card>
           
           {/* SECTION 1: EXECUTIVE SUMMARY */}
           <Card className="overflow-hidden border-2 border-primary/30">

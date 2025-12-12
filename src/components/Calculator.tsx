@@ -439,6 +439,7 @@ const Calculator = () => {
         usdToEurRate={usdToEurRate}
         containerType={containerType}
         onRecalculate={handleRecalculate}
+        onScenarioChange={setScenario}
       />
     </div>
   );
