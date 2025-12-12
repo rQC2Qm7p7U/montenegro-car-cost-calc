@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Ship, Calculator as CalcIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
@@ -60,7 +60,6 @@ const Calculator = () => {
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
     carPrices,
-    krwToEurRate,
     usdToEurRate,
     customsDuty,
     vat,
@@ -73,7 +72,7 @@ const Calculator = () => {
   });
 
   // Fetch exchange rates
-  const handleFetchRates = async () => {
+  const handleFetchRates = useCallback(async () => {
     setIsLoadingRates(true);
     const rates = await fetchExchangeRates();
     if (rates) {
@@ -91,7 +90,14 @@ const Calculator = () => {
       });
     }
     setIsLoadingRates(false);
-  };
+  }, [toast]);
+
+  // Auto-update exchange rates on load or when toggle is enabled
+  useEffect(() => {
+    if (autoUpdateFX) {
+      handleFetchRates();
+    }
+  }, [autoUpdateFX, handleFetchRates]);
 
   // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;
@@ -107,14 +113,6 @@ const Calculator = () => {
   // Handle recalculate (close modal to edit)
   const handleRecalculate = () => {
     setIsResultsOpen(false);
-  };
-
-  // Handle PDF download
-  const handleDownloadPDF = () => {
-    toast({
-      title: "Coming soon",
-      description: "PDF export feature will be available soon",
-    });
   };
 
   return (
@@ -233,7 +231,6 @@ const Calculator = () => {
         usdToEurRate={usdToEurRate}
         containerType={containerType}
         onRecalculate={handleRecalculate}
-        onDownloadPDF={handleDownloadPDF}
       />
     </div>
   );

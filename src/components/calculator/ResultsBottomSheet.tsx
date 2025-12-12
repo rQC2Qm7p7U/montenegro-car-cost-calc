@@ -37,7 +37,6 @@ interface ResultsBottomSheetProps {
   usdToEurRate: number;
   containerType: "20ft" | "40ft";
   onRecalculate: () => void;
-  onDownloadPDF: () => void;
 }
 
 export const ResultsBottomSheet = ({

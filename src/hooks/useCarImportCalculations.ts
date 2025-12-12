@@ -6,7 +6,6 @@ import type {
 
 interface UseCarImportCalculationsProps {
   carPrices: number[];
-  krwToEurRate: number;
   usdToEurRate: number;
   customsDuty: number;
   vat: number;

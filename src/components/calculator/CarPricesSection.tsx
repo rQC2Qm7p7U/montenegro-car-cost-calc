@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +64,35 @@ export const CarPricesSection = ({
   };
 
   const completedCount = carPrices.filter(p => p > 0).length;
+
+  // Keep KRW inputs in sync with car count
+  useEffect(() => {
+    setKrwInputValues((prev) => {
+      if (prev.length < numberOfCars) {
+        return [...prev, ...Array(numberOfCars - prev.length).fill("")];
+      }
+      if (prev.length > numberOfCars) {
+        return prev.slice(0, numberOfCars);
+      }
+      return prev;
+    });
+  }, [numberOfCars]);
+
+  // Recalculate EUR prices when KRW rate or input mode changes
+  useEffect(() => {
+    if (!krwInputValues.some(Boolean)) return;
+    setCarPrices((prevPrices) => {
+      const updated = [...prevPrices];
+      krwInputValues.forEach((value, index) => {
+        if (!value) return;
+        const parsedKRW = parseKRWInput(value);
+        const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
+        const eurValue = convertKRWToEUR(actualKRW, krwToEurRate);
+        updated[index] = Math.round(eurValue);
+      });
+      return updated;
+    });
+  }, [krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
 
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card" style={{ animationDelay: "0.15s" }}>
