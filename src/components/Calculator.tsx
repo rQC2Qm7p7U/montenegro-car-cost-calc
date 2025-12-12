@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Ship, Calculator as CalcIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
@@ -7,11 +7,14 @@ import { useCarImportCalculations } from "@/hooks/useCarImportCalculations";
 import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
 import { CarPricesSection } from "./calculator/CarPricesSection";
-import { CalculationResults } from "./calculator/CalculationResults";
+import { ResultsBottomSheet } from "./calculator/ResultsBottomSheet";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const Calculator = () => {
   const { toast } = useToast();
+  const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const formChangeRef = useRef(false);
 
   // Car prices (array of EUR values)
   const [carPrices, setCarPrices] = useState<number[]>([0]);
@@ -34,14 +37,20 @@ const Calculator = () => {
   const [numberOfCars, setNumberOfCars] = useState<number>(1);
   const [containerType, setContainerType] = useState<"20ft" | "40ft">("40ft");
 
+  // Close modal when any input changes
+  useEffect(() => {
+    if (formChangeRef.current && isResultsOpen) {
+      setIsResultsOpen(false);
+    }
+    formChangeRef.current = true;
+  }, [carPrices, krwToEurRate, usdToEurRate, customsDuty, vat, translationPages, homologationFee, miscellaneous, scenario, numberOfCars, containerType]);
+
   // Update carPrices array when numberOfCars changes
   useEffect(() => {
     setCarPrices((prev) => {
       if (prev.length < numberOfCars) {
-        // Add new entries with 0 price
         return [...prev, ...Array(numberOfCars - prev.length).fill(0)];
       } else if (prev.length > numberOfCars) {
-        // Trim excess entries
         return prev.slice(0, numberOfCars);
       }
       return prev;
@@ -84,48 +93,68 @@ const Calculator = () => {
     setIsLoadingRates(false);
   };
 
-  // Calculate completion percentage for car prices
+  // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;
+  const allPricesFilled = completedCars === numberOfCars;
   const completionPercent = Math.round((completedCars / numberOfCars) * 100);
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <header className="text-center mb-8 animate-fade-in">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="relative inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg hover:scale-105 transition-transform duration-300">
-              <Ship className="w-7 h-7 text-primary-foreground" />
-            </div>
-            <ThemeToggle />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
-            Montenegro Car Import
-          </h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Calculate import costs for vehicles from Korea
-          </p>
-          
-          {/* Quick status badges */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-            <Badge variant="outline" className="gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              {containerType} Container
-            </Badge>
-            <Badge variant="outline" className="gap-1.5">
-              {numberOfCars} {numberOfCars === 1 ? 'Car' : 'Cars'}
-            </Badge>
-            {completedCars > 0 && (
-              <Badge variant="secondary" className="gap-1.5 badge-success">
-                {completedCars}/{numberOfCars} priced
-              </Badge>
-            )}
-          </div>
-        </header>
+  // Handle calculate button click
+  const handleCalculate = () => {
+    formChangeRef.current = false;
+    setIsResultsOpen(true);
+  };
 
-        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
-          {/* Input Form */}
-          <div className="space-y-5 order-2 lg:order-1">
+  // Handle recalculate (close modal to edit)
+  const handleRecalculate = () => {
+    setIsResultsOpen(false);
+  };
+
+  // Handle PDF download
+  const handleDownloadPDF = () => {
+    toast({
+      title: "Coming soon",
+      description: "PDF export feature will be available soon",
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
+      <div className="py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Header */}
+          <header className="text-center mb-8 animate-fade-in">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="relative inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg hover:scale-105 transition-transform duration-300">
+                <Ship className="w-7 h-7 text-primary-foreground" />
+              </div>
+              <ThemeToggle />
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
+              Montenegro Car Import
+            </h1>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Calculate import costs for vehicles from Korea
+            </p>
+            
+            {/* Quick status badges */}
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
+              <Badge variant="outline" className="gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                {containerType} Container
+              </Badge>
+              <Badge variant="outline" className="gap-1.5">
+                {numberOfCars} {numberOfCars === 1 ? 'Car' : 'Cars'}
+              </Badge>
+              {completedCars > 0 && (
+                <Badge variant="secondary" className="gap-1.5 badge-success">
+                  {completedCars}/{numberOfCars} priced
+                </Badge>
+              )}
+            </div>
+          </header>
+
+          {/* Input Form - Single column layout */}
+          <div className="space-y-5">
             <CurrencyRatesSection
               autoUpdateFX={autoUpdateFX}
               setAutoUpdateFX={setAutoUpdateFX}
@@ -168,22 +197,43 @@ const Calculator = () => {
               krwToEurRate={krwToEurRate}
             />
           </div>
-
-          {/* Results - Sticky on desktop */}
-          <div className="order-1 lg:order-2 lg:sticky lg:top-6 lg:self-start">
-            <CalculationResults
-              results={results}
-              numberOfCars={numberOfCars}
-              scenario={scenario}
-              customsDuty={customsDuty}
-              vat={vat}
-              krwToEurRate={krwToEurRate}
-              usdToEurRate={usdToEurRate}
-              completionPercent={completionPercent}
-            />
-          </div>
         </div>
       </div>
+
+      {/* Sticky Calculate Button Footer */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border/50 z-40">
+        <div className="max-w-2xl mx-auto">
+          <Button
+            onClick={handleCalculate}
+            disabled={!allPricesFilled}
+            size="lg"
+            className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto sm:flex h-14 text-lg font-semibold gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+          >
+            <CalcIcon className="w-5 h-5" />
+            {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
+          </Button>
+          {!allPricesFilled && (
+            <p className="text-center text-xs text-muted-foreground mt-2">
+              Fill all car prices to calculate
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Results Bottom Sheet */}
+      <ResultsBottomSheet
+        open={isResultsOpen}
+        onOpenChange={setIsResultsOpen}
+        results={results}
+        numberOfCars={numberOfCars}
+        scenario={scenario}
+        customsDuty={customsDuty}
+        vat={vat}
+        krwToEurRate={krwToEurRate}
+        usdToEurRate={usdToEurRate}
+        onRecalculate={handleRecalculate}
+        onDownloadPDF={handleDownloadPDF}
+      />
     </div>
   );
 };
