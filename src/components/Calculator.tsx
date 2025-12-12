@@ -231,6 +231,7 @@ const Calculator = () => {
         vat={vat}
         krwToEurRate={krwToEurRate}
         usdToEurRate={usdToEurRate}
+        containerType={containerType}
         onRecalculate={handleRecalculate}
         onDownloadPDF={handleDownloadPDF}
       />
