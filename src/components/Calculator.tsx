@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Ship, Calculator as CalcIcon } from "lucide-react";
+import { Ship, Calculator as CalcIcon, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
@@ -10,6 +10,7 @@ import { CarPricesSection } from "./calculator/CarPricesSection";
 import { ResultsBottomSheet } from "./calculator/ResultsBottomSheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { BottomSheet, BottomSheetBody, BottomSheetHeader } from "@/components/ui/bottom-sheet";
 
 const PERSIST_KEY = "car-import-state-v1";
 const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
@@ -485,29 +486,27 @@ const Calculator = () => {
             <X className="w-5 h-5" />
           </Button>
         </BottomSheetHeader>
-        <BottomSheetBody
-          className="pt-2"
-          onTouchStart={handleRatesTouchStart}
-          onTouchEnd={handleRatesTouchEnd}
-        >
-          <CurrencyRatesSection
-            autoUpdateFX={autoUpdateFX}
-            setAutoUpdateFX={setAutoUpdateFX}
-            isLoadingRates={isLoadingRates}
-            onRefreshRates={handleFetchRates}
-            krwToEurRate={krwToEurRate}
-            setKrwToEurRate={setKrwToEurRate}
-            usdToEurRate={usdToEurRate}
-            setUsdToEurRate={setUsdToEurRate}
-            lastUpdatedAt={lastUpdatedAt}
-            lastValidRates={lastValidRates}
-            onRevertToLastValid={() => {
-              if (lastValidRates) {
-                setKrwToEurRate(lastValidRates.krwToEur);
-                setUsdToEurRate(lastValidRates.usdToEur);
-              }
-            }}
-          />
+        <BottomSheetBody className="pt-2">
+          <div onTouchStart={handleRatesTouchStart} onTouchEnd={handleRatesTouchEnd}>
+            <CurrencyRatesSection
+              autoUpdateFX={autoUpdateFX}
+              setAutoUpdateFX={setAutoUpdateFX}
+              isLoadingRates={isLoadingRates}
+              onRefreshRates={handleFetchRates}
+              krwToEurRate={krwToEurRate}
+              setKrwToEurRate={setKrwToEurRate}
+              usdToEurRate={usdToEurRate}
+              setUsdToEurRate={setUsdToEurRate}
+              lastUpdatedAt={lastUpdatedAt}
+              lastValidRates={lastValidRates}
+              onRevertToLastValid={() => {
+                if (lastValidRates) {
+                  setKrwToEurRate(lastValidRates.krwToEur);
+                  setUsdToEurRate(lastValidRates.usdToEur);
+                }
+              }}
+            />
+          </div>
         </BottomSheetBody>
       </BottomSheet>
     </div>
