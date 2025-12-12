@@ -134,7 +134,7 @@ export const VehicleDetailsSection = ({
                 <span className="font-medium text-sm">20ft</span>
               </div>
               <p className="text-xs text-muted-foreground">Max 2 cars</p>
-              <p className="text-xs font-medium text-primary mt-1">$3,150 + €350</p>
+              <p className="text-xs font-medium text-primary mt-1">$3,150</p>
             </button>
             <button
               onClick={() => setContainerType("40ft")}
@@ -149,7 +149,7 @@ export const VehicleDetailsSection = ({
                 <span className="font-medium text-sm">40ft HC</span>
               </div>
               <p className="text-xs text-muted-foreground">Max 4 cars</p>
-              <p className="text-xs font-medium text-primary mt-1">$4,150 + €420</p>
+              <p className="text-xs font-medium text-primary mt-1">$4,150</p>
             </button>
           </div>
         </div>
@@ -253,7 +253,7 @@ export const VehicleDetailsSection = ({
                   className="mt-1.5 bg-muted/50 cursor-not-allowed text-muted-foreground"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  (420÷{numberOfCars}) + 250
+                  ({containerInfo.localEUR}÷{numberOfCars}) + 250
                 </p>
               </div>
             </div>
