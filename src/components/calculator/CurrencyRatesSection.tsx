@@ -33,21 +33,14 @@ export const CurrencyRatesSection = ({
   lastValidRates,
   onRevertToLastValid,
 }: CurrencyRatesSectionProps) => {
-  const KRW_RANGE = { min: 500, max: 2000 };
-  const USD_RANGE = { min: 0.5, max: 2 };
   const [editKrw, setEditKrw] = useState(false);
   const [editUsd, setEditUsd] = useState(false);
 
-  const krwInvalid = krwPerUsdRate < KRW_RANGE.min || krwPerUsdRate > KRW_RANGE.max;
-  const usdInvalid = usdPerEurRate < USD_RANGE.min || usdPerEurRate > USD_RANGE.max;
-
-  const safeNumber = (value: string) => {
+  const toPositiveNumber = (value: string) => {
     const num = Number(value.replace(",", "."));
-    return Number.isFinite(num) ? num : 0;
+    if (!Number.isFinite(num)) return 0;
+    return num > 0 ? num : 0;
   };
-
-  const clamp = (value: number, min: number, max: number) =>
-    Math.min(max, Math.max(min, value));
 
   const updatedLabel = lastUpdatedAt
     ? new Date(lastUpdatedAt).toLocaleString()
@@ -94,18 +87,13 @@ export const CurrencyRatesSection = ({
             <Input
               autoFocus
               id="krwPerUsd"
-              type="number"
-              step="1"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
               value={krwPerUsdRate}
-              min={KRW_RANGE.min}
-              max={KRW_RANGE.max}
-              onChange={(e) =>
-                setKrwPerUsdRate(clamp(safeNumber(e.target.value), KRW_RANGE.min, KRW_RANGE.max))
-              }
+              onChange={(e) => setKrwPerUsdRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditKrw(false)}
-              className={`input-focus-ring bg-background/50 h-9 text-sm ${
-                krwInvalid ? "border-destructive/60" : ""
-              }`}
+              className="input-focus-ring bg-background/50 h-9 text-sm"
             />
           ) : (
             <button
@@ -113,14 +101,11 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditKrw(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">₩{Math.round(krwPerUsdRate).toLocaleString("en-US")}</span>
+              <span className="font-semibold">
+                {krwPerUsdRate > 0 ? `₩${Math.round(krwPerUsdRate).toLocaleString("en-US")}` : "—"}
+              </span>
               <span className="text-muted-foreground text-[11px] ml-2">per $</span>
             </button>
-          )}
-          {krwInvalid && (
-            <p className="text-[11px] text-destructive mt-1">
-              Expected range: {KRW_RANGE.min}–{KRW_RANGE.max}
-            </p>
           )}
         </div>
 
@@ -130,18 +115,13 @@ export const CurrencyRatesSection = ({
             <Input
               autoFocus
               id="usdPerEur"
-              type="number"
-              step="0.0001"
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
               value={usdPerEurRate}
-              min={USD_RANGE.min}
-              max={USD_RANGE.max}
-              onChange={(e) =>
-                setUsdPerEurRate(clamp(safeNumber(e.target.value), USD_RANGE.min, USD_RANGE.max))
-              }
+              onChange={(e) => setUsdPerEurRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditUsd(false)}
-              className={`input-focus-ring bg-background/50 h-9 text-sm ${
-                usdInvalid ? "border-destructive/60" : ""
-              }`}
+              className="input-focus-ring bg-background/50 h-9 text-sm"
             />
           ) : (
             <button
@@ -149,21 +129,18 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditUsd(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">${usdPerEurRate.toFixed(4)}</span>
+              <span className="font-semibold">
+                {usdPerEurRate > 0 ? `$${usdPerEurRate.toFixed(4)}` : "—"}
+              </span>
               <span className="text-muted-foreground text-[11px] ml-2">per €</span>
             </button>
-          )}
-          {usdInvalid && (
-            <p className="text-[11px] text-destructive mt-1">
-              Expected range: {USD_RANGE.min}–{USD_RANGE.max}
-            </p>
           )}
         </div>
       </div>
 
-      {(krwInvalid || usdInvalid) && lastValidRates && (
+      {lastValidRates && (
         <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/30 mt-2">
-          <p className="text-[11px] text-destructive">Out of range. Restore last successful rates?</p>
+          <p className="text-[11px] text-destructive">Restore last successful rates?</p>
           <Button size="sm" variant="outline" onClick={onRevertToLastValid}>
             Revert
           </Button>
