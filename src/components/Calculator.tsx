@@ -481,12 +481,6 @@ const Calculator = () => {
       }
 
       setLastValidRates({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
-      const now = Date.now();
-      setLastUpdatedAt(now);
-      localStorage.setItem(
-        FX_LAST_SUCCESS_KEY,
-        JSON.stringify({ krwToEur: krwToEurRate, usdToEur: usdToEurRate, fetchedAt: now }),
-      );
     }
   }, [krwToEurRate, usdToEurRate]);
 
