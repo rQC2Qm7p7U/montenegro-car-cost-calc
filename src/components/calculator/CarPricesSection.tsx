@@ -27,6 +27,8 @@ const copy: Record<
     title: string;
     entered: (completed: number, total: number) => string;
     formatHint: string;
+    selectEur: string;
+    selectKrw: string;
     rawKrwLabel: string;
     rawKrwInfo: string;
     applyAll: string;
@@ -42,6 +44,8 @@ const copy: Record<
     title: "Vehicle Prices",
     entered: (completed, total) => `${completed}/${total} entered`,
     formatHint: "Expected format: 12 345 €",
+    selectEur: "EUR €",
+    selectKrw: "KRW ₩",
     rawKrwLabel: "Full KRW (no 만원)",
     rawKrwInfo: "Korean shorthand: '만원' = ×10,000\nExample: 2 280 → 22 800 000 KRW",
     applyAll: "Apply Car #1 price to all",
@@ -56,6 +60,8 @@ const copy: Record<
     title: "Стоимость автомобилей",
     entered: (completed, total) => `${completed}/${total} заполнено`,
     formatHint: "Формат: 12 345 €",
+    selectEur: "Евро €",
+    selectKrw: "Вона ₩",
     rawKrwLabel: "Полная сумма KRW (без 만원)",
     rawKrwInfo: "Короткая запись в Корее: '만원' = ×10 000\nПример: 2 280 → 22 800 000 KRW",
     applyAll: "Применить цену авто №1 ко всем",
@@ -301,8 +307,8 @@ export const CarPricesSection = ({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="eur">EUR €</SelectItem>
-              <SelectItem value="krw">KRW ₩</SelectItem>
+              <SelectItem value="eur">{t.selectEur}</SelectItem>
+              <SelectItem value="krw">{t.selectKrw}</SelectItem>
             </SelectContent>
           </Select>
         </div>

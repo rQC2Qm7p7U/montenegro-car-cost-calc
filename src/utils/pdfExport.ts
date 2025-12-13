@@ -14,15 +14,6 @@ interface ExportParams {
   containerType: '20ft' | '40ft';
 }
 
-const formatEUR = (value: number): string => {
-  return new Intl.NumberFormat('ru-RU')
-    .format(Math.round(value))
-    .replace(/\u00A0/g, ' ');
-};
-
-const formatNumber = (value: number, options?: Intl.NumberFormatOptions): string =>
-  new Intl.NumberFormat('ru-RU', options).format(value).replace(/\u00A0/g, ' ');
-
 export const exportCalculationPDF = ({
   language,
   results,
@@ -35,6 +26,13 @@ export const exportCalculationPDF = ({
   containerType,
 }: ExportParams): void => {
   const isRu = language === "ru";
+  const locale = isRu ? "ru-RU" : "en-US";
+  const formatEUR = (value: number): string =>
+    new Intl.NumberFormat(locale)
+      .format(Math.round(value))
+      .replace(/\u00A0/g, " ");
+  const formatNumber = (value: number, options?: Intl.NumberFormatOptions): string =>
+    new Intl.NumberFormat(locale, options).format(value).replace(/\u00A0/g, " ");
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 20;

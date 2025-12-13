@@ -11,18 +11,30 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
-    const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const initialTheme = savedTheme || systemTheme;
-    
-    setTheme(initialTheme);
-    document.documentElement.classList.toggle("dark", initialTheme === "dark");
+    try {
+      const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+      const systemTheme =
+        typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+      const initialTheme = savedTheme || systemTheme;
+
+      setTheme(initialTheme);
+      document.documentElement.classList.toggle("dark", initialTheme === "dark");
+    } catch (error) {
+      console.warn("Theme detection failed, defaulting to light", error);
+      setTheme("light");
+    }
   }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
+    try {
+      localStorage.setItem("theme", newTheme);
+    } catch (error) {
+      console.warn("Unable to persist theme", error);
+    }
     document.documentElement.classList.toggle("dark", newTheme === "dark");
   };
 

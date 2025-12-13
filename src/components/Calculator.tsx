@@ -23,6 +23,12 @@ import {
   BottomSheetBody,
   BottomSheetHeader,
 } from "@/components/ui/bottom-sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Language } from "@/types/language";
 
 const PERSIST_KEY = "car-import-state-v1";
@@ -894,27 +900,54 @@ const Calculator = () => {
                 <p className="text-xs text-muted-foreground">{t.subtitle}</p>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className={`${controlButtonClasses} text-xs font-semibold`}
-                  onClick={() =>
-                    setLanguage((prev) => (prev === "en" ? "ru" : "en"))
-                  }
-                  aria-label="Toggle language RU/EN"
-                >
-                  {language === "en" ? "RU" : "EN"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className={controlButtonClasses}
-                  onClick={handleCopyShareLink}
-                  aria-label="Copy calculator link"
-                >
-                  <Share2 className="w-4 h-4" />
-                </Button>
-                <ThemeToggle className={controlButtonClasses} />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={`${controlButtonClasses} text-xs font-semibold`}
+                        onClick={() =>
+                          setLanguage((prev) => (prev === "en" ? "ru" : "en"))
+                        }
+                        aria-label="Toggle language RU/EN"
+                      >
+                        {language === "en" ? "RU" : "EN"}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {language === "en" ? "Switch to Russian" : "Переключить на английский"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className={controlButtonClasses}
+                        onClick={handleCopyShareLink}
+                        aria-label="Copy calculator link"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {t.shareSuccessTitle}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <ThemeToggle className={controlButtonClasses} />
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {language === "en" ? "Toggle theme" : "Сменить тему"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
 
