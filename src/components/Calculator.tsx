@@ -737,34 +737,32 @@ const Calculator = () => {
               krwToEurRate={krwToEurRate}
               results={results}
             />
+
+            {/* Calculate Button */}
+            <Button
+              onClick={handleCalculate}
+              disabled={!allPricesFilled}
+              className="
+                w-full h-14 mt-2 rounded-xl
+                shadow-lg shadow-primary/20
+                bg-gradient-to-r from-primary to-primary/80
+                hover:from-primary/90 hover:to-primary/70
+                hover:shadow-primary/30 hover:shadow-xl
+                active:scale-[0.98]
+                transition-all duration-200 ease-out
+                disabled:opacity-50 disabled:cursor-not-allowed
+                flex items-center justify-center gap-3
+                text-primary-foreground font-semibold text-base
+              "
+            >
+              <CalcIcon className="w-5 h-5" />
+              <span>
+                {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
+              </span>
+            </Button>
           </div>
         </div>
       </div>
-
-      {/* Floating Action Button */}
-      <Button
-        onClick={handleCalculate}
-        disabled={!allPricesFilled}
-        className="
-          fixed bottom-6 left-1/2 -translate-x-1/2 z-40
-          h-14 min-w-[200px] sm:min-w-[280px] px-8 rounded-full
-          shadow-2xl shadow-primary/30
-          bg-gradient-to-r from-primary to-primary/80
-          hover:from-primary/90 hover:to-primary/70
-          hover:shadow-primary/40 hover:shadow-2xl
-          hover:scale-105
-          active:scale-95
-          transition-all duration-300 ease-out
-          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-          flex items-center justify-center gap-3
-          text-primary-foreground font-semibold text-base
-        "
-      >
-        <CalcIcon className="w-5 h-5" />
-        <span>
-          {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
-        </span>
-      </Button>
 
       {/* Results Bottom Sheet */}
       <ResultsBottomSheet
