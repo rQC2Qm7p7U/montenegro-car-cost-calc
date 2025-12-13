@@ -1,7 +1,48 @@
-import jsPDF from 'jspdf';
 import type { CalculationResults } from '@/types/calculator';
 import type { Language } from '@/types/language';
 import { getContainerConfig } from '@/lib/carImport';
+
+const clampMoney = (value: number, max: number) =>
+  Math.min(max, Math.max(0, Number.isFinite(value) ? value : 0));
+
+const sanitizeResults = (results: CalculationResults) => {
+  const MAX_EUR = 1_000_000_000;
+  const clamp = (value: number) => clampMoney(value, MAX_EUR);
+
+  return {
+    ...results,
+    freightPerContainerEUR: clamp(results.freightPerContainerEUR),
+    freightPerCar: clamp(results.freightPerCar),
+    portAgentFeePerCar: clamp(results.portAgentFeePerCar),
+    translationPerCar: clamp(results.translationPerCar),
+    speditorFee: clamp(results.speditorFee),
+    totalCarPrices: clamp(results.totalCarPrices),
+    totalCIF: clamp(results.totalCIF),
+    totalCustoms: clamp(results.totalCustoms),
+    totalVAT: clamp(results.totalVAT),
+    totalCostWithoutCars: clamp(results.totalCostWithoutCars),
+    totalFinalCost: clamp(results.totalFinalCost),
+    totalVATRefund: clamp(results.totalVATRefund),
+    totalNetCostForCompany: clamp(results.totalNetCostForCompany),
+    carResults: results.carResults.map((car) => ({
+      ...car,
+      carPrice: clamp(car.carPrice),
+      freightPerCar: clamp(car.freightPerCar),
+      cif: clamp(car.cif),
+      customs: clamp(car.customs),
+      vatAmount: clamp(car.vatAmount),
+      portAgentFeePerCar: clamp(car.portAgentFeePerCar),
+      translationPerCar: clamp(car.translationPerCar),
+      speditorFee: clamp(car.speditorFee),
+      homologationFee: clamp(car.homologationFee),
+      miscellaneous: clamp(car.miscellaneous),
+      totalCostWithoutCar: clamp(car.totalCostWithoutCar),
+      finalCost: clamp(car.finalCost),
+      vatRefund: clamp(car.vatRefund),
+      netCostForCompany: clamp(car.netCostForCompany),
+    })),
+  };
+};
 
 interface ExportParams {
   language: Language;
@@ -15,7 +56,7 @@ interface ExportParams {
   containerType: '20ft' | '40ft';
 }
 
-export const exportCalculationPDF = ({
+export const exportCalculationPDF = async ({
   language,
   results,
   numberOfCars,
@@ -25,7 +66,9 @@ export const exportCalculationPDF = ({
   krwPerUsdRate,
   usdPerEurRate,
   containerType,
-}: ExportParams): void => {
+}: ExportParams): Promise<void> => {
+  const sanitized = sanitizeResults(results);
+  const { default: jsPDF } = await import('jspdf');
   const isRu = language === "ru";
   const locale = isRu ? "ru-RU" : "en-US";
   const formatEUR = (value: number): string =>
@@ -43,9 +86,9 @@ export const exportCalculationPDF = ({
   const containerInfo = getContainerConfig(containerType);
   const scenarioLabel = scenario === 'company' ? (isRu ? 'компания' : 'company') : (isRu ? 'физлицо' : 'physical');
 
-  const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
+  const carsWithPrices = sanitized.carResults.filter(car => car.carPrice > 0);
   const avgFinalCost = carsWithPrices.length > 0
-    ? results.totalFinalCost / carsWithPrices.length
+    ? sanitized.totalFinalCost / carsWithPrices.length
     : 0;
 
   // Header
@@ -79,7 +122,7 @@ export const exportCalculationPDF = ({
   
   doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text(`€${formatEUR(results.totalFinalCost)}`, margin + 10, y + 28);
+  doc.text(`€${formatEUR(sanitized.totalFinalCost)}`, margin + 10, y + 28);
   
   // Right side metrics
   doc.setFontSize(8);
@@ -87,7 +130,7 @@ export const exportCalculationPDF = ({
   doc.setTextColor(100, 100, 100);
   doc.text(`${isRu ? 'Авто' : 'Vehicles'}: ${carsWithPrices.length}`, margin + 120, y + 14);
   doc.text(`${isRu ? 'Среднее/авто' : 'Avg. per car'}: €${formatEUR(avgFinalCost)}`, margin + 120, y + 22);
-  doc.text(`${isRu ? 'Налоги' : 'Total taxes'}: €${formatEUR(results.totalCustoms + results.totalVAT)}`, margin + 120, y + 30);
+  doc.text(`${isRu ? 'Налоги' : 'Total taxes'}: €${formatEUR(sanitized.totalCustoms + sanitized.totalVAT)}`, margin + 120, y + 30);
   
   y += 50;
 
@@ -106,7 +149,7 @@ export const exportCalculationPDF = ({
     );
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `${isRu ? 'Итог' : 'Net Cost'}: €${formatEUR(results.totalNetCostForCompany)} | ${isRu ? 'Возврат НДС' : 'VAT Refund'}: €${formatEUR(results.totalVATRefund)}`,
+      `${isRu ? 'Итог' : 'Net Cost'}: €${formatEUR(sanitized.totalNetCostForCompany)} | ${isRu ? 'Возврат НДС' : 'VAT Refund'}: €${formatEUR(sanitized.totalVATRefund)}`,
       margin + 10,
       y + 16,
     );
@@ -135,18 +178,18 @@ export const exportCalculationPDF = ({
 
   addRow(
     `${isRu ? 'Покупка авто' : 'Vehicle Purchase'} (${carsWithPrices.length}×)`,
-    `€${formatEUR(results.totalCarPrices)}`,
+    `€${formatEUR(sanitized.totalCarPrices)}`,
   );
-  addRow(`${isRu ? 'Морской фрахт' : 'Sea Freight'} (${containerType})`, `€${formatEUR(results.freightPerContainerEUR)}`);
+  addRow(`${isRu ? 'Морской фрахт' : 'Sea Freight'} (${containerType})`, `€${formatEUR(sanitized.freightPerContainerEUR)}`);
   
   y += 2;
   doc.setFillColor(245, 245, 245);
   doc.rect(margin, y - 4, contentWidth, 8, 'F');
-  addRow(isRu ? 'CIF стоимость' : 'CIF Value', `€${formatEUR(results.totalCIF)}`, true);
+  addRow(isRu ? 'CIF стоимость' : 'CIF Value', `€${formatEUR(sanitized.totalCIF)}`, true);
   y += 2;
 
-  addRow(`${isRu ? 'Пошлина' : 'Customs Duty'} (${customsDuty}%)`, `€${formatEUR(results.totalCustoms)}`);
-  addRow(`${isRu ? 'НДС' : 'VAT'} (${vat}%)`, `€${formatEUR(results.totalVAT)}`);
+  addRow(`${isRu ? 'Пошлина' : 'Customs Duty'} (${customsDuty}%)`, `€${formatEUR(sanitized.totalCustoms)}`);
+  addRow(`${isRu ? 'НДС' : 'VAT'} (${vat}%)`, `€${formatEUR(sanitized.totalVAT)}`);
   
   y += 4;
   doc.setFontSize(8);
@@ -154,25 +197,25 @@ export const exportCalculationPDF = ({
   doc.text(isRu ? 'Сервисы и сборы:' : 'Services & Fees:', margin, y);
   y += 5;
 
-  addRow(isRu ? 'Порт и агент' : 'Port & Agent Fee', `€${formatEUR(results.portAgentFeePerCar * numberOfCars)}`, false, 5);
+  addRow(isRu ? 'Порт и агент' : 'Port & Agent Fee', `€${formatEUR(sanitized.portAgentFeePerCar * numberOfCars)}`, false, 5);
   addRow(
     `${isRu ? 'Экспедитор' : 'Speditor Fee'} (${numberOfCars}×)`,
-    `€${formatEUR(results.speditorFee * numberOfCars)}`,
+    `€${formatEUR(sanitized.speditorFee * numberOfCars)}`,
     false,
     5,
   );
-  addRow(isRu ? 'Перевод' : 'Translation', `€${formatEUR(results.translationPerCar * numberOfCars)}`, false, 5);
+  addRow(isRu ? 'Перевод' : 'Translation', `€${formatEUR(sanitized.translationPerCar * numberOfCars)}`, false, 5);
   addRow(
     `${isRu ? 'Гомологация' : 'Homologation'} (${numberOfCars}×)`,
-    `€${formatEUR((results.carResults[0]?.homologationFee || 0) * numberOfCars)}`,
+    `€${formatEUR((sanitized.carResults[0]?.homologationFee || 0) * numberOfCars)}`,
     false,
     5,
   );
   
-  if (results.carResults[0]?.miscellaneous > 0) {
+  if (sanitized.carResults[0]?.miscellaneous > 0) {
     addRow(
       `${isRu ? 'Прочие расходы' : 'Miscellaneous'} (${numberOfCars}×)`,
-      `€${formatEUR(results.carResults[0].miscellaneous * numberOfCars)}`,
+      `€${formatEUR(sanitized.carResults[0].miscellaneous * numberOfCars)}`,
       false,
       5,
     );
@@ -185,7 +228,7 @@ export const exportCalculationPDF = ({
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text(isRu ? 'ИТОГО' : 'GRAND TOTAL', margin + 5, y + 2);
-  doc.text(`€${formatEUR(results.totalFinalCost)}`, pageWidth - margin - 5, y + 2, { align: 'right' });
+  doc.text(`€${formatEUR(sanitized.totalFinalCost)}`, pageWidth - margin - 5, y + 2, { align: 'right' });
   y += 16;
 
   // Per Vehicle Section

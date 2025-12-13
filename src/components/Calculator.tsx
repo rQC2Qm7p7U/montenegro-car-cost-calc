@@ -34,6 +34,8 @@ const PERSIST_KEY = "car-import-state-v1";
 const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
 const FX_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 const LANGUAGE_STORAGE_KEY = "car-import-language";
+const STATE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const FX_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 const DEFAULTS = {
   customsDuty: 5,
@@ -171,6 +173,9 @@ type InitialState = {
   lastUpdatedAt: number | null;
 };
 
+const clampPositive = (value: number, max: number, fallback: number) =>
+  Math.min(max, Math.max(0, Number.isFinite(value) ? value : fallback));
+
 const readInitialState = (): InitialState => {
   if (typeof window === "undefined") {
     return {
@@ -196,6 +201,7 @@ const readInitialState = (): InitialState => {
     const stored: Record<string, unknown> = storedRaw ? JSON.parse(storedRaw) : {};
     const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
     const lastFx = storedFX ? JSON.parse(storedFX) : null;
+    const now = Date.now();
 
     const parseNumber = (value: unknown, fallback: number) => {
       if (value === null || value === undefined || value === "") return fallback;
@@ -244,6 +250,17 @@ const readInitialState = (): InitialState => {
       containerType: preferStored("containerType", stored.containerType),
       autoUpdateFX: preferStored("autoUpdateFX", stored.autoUpdateFX),
     };
+    const persistedAt = parseNumber(
+      (stored as Record<string, unknown>).persistedAt,
+      NaN
+    );
+    const isStateFresh =
+      Number.isFinite(persistedAt) && now - persistedAt <= STATE_TTL_MS;
+
+    if (!isStateFresh) {
+      localStorage.removeItem(PERSIST_KEY);
+    }
+
     const resolvedContainer =
       merged.containerType === "20ft" || merged.containerType === "40ft"
         ? merged.containerType
@@ -278,12 +295,20 @@ const readInitialState = (): InitialState => {
       )
     );
 
-    const lastValidRates =
+    const fxFresh =
       lastFx &&
       Number.isFinite(lastFx.krwPerUsd) &&
-      Number.isFinite(lastFx.usdPerEur)
-        ? { krwPerUsd: lastFx.krwPerUsd, usdPerEur: lastFx.usdPerEur }
-        : deriveLegacyRates(lastFx?.krwToEur, lastFx?.usdToEur);
+      Number.isFinite(lastFx.usdPerEur) &&
+      Number.isFinite(lastFx.fetchedAt) &&
+      now - lastFx.fetchedAt <= FX_TTL_MS;
+
+    if (lastFx && !fxFresh) {
+      localStorage.removeItem(FX_LAST_SUCCESS_KEY);
+    }
+
+    const lastValidRates = fxFresh
+      ? { krwPerUsd: lastFx.krwPerUsd, usdPerEur: lastFx.usdPerEur }
+      : deriveLegacyRates(lastFx?.krwToEur, lastFx?.usdToEur);
 
     return {
       carPrices: normalizedCarPrices,
@@ -309,24 +334,45 @@ const readInitialState = (): InitialState => {
       ),
       translationPages: Math.max(
         0,
-        parseNumber(merged.translationPages, DEFAULTS.translationPages)
+        clampPositive(
+          parseNumber(merged.translationPages, DEFAULTS.translationPages),
+          200,
+          DEFAULTS.translationPages
+        )
       ),
       homologationFee: Math.max(
         0,
-        parseNumber(merged.homologationFee, DEFAULTS.homologationFee)
+        clampPositive(
+          parseNumber(merged.homologationFee, DEFAULTS.homologationFee),
+          20000,
+          DEFAULTS.homologationFee
+        )
       ),
       miscellaneous: Math.max(
         0,
-        parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)
+        clampPositive(
+          parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous),
+          20000,
+          DEFAULTS.miscellaneous
+        )
       ),
       scenario: merged.scenario === "company" ? "company" : "physical",
       numberOfCars: resolvedNumberOfCars,
       containerType: resolvedContainer,
       autoUpdateFX: parseBool(merged.autoUpdateFX, false),
-      lastValidRates,
-      lastUpdatedAt: Number.isFinite(lastFx?.fetchedAt)
-        ? lastFx?.fetchedAt
-        : null,
+      lastValidRates:
+        lastFx &&
+        Number.isFinite(lastFx.krwPerUsd) &&
+        Number.isFinite(lastFx.usdPerEur) &&
+        Number.isFinite(lastFx.fetchedAt) &&
+        now - lastFx.fetchedAt <= FX_TTL_MS
+          ? { krwPerUsd: lastFx.krwPerUsd, usdPerEur: lastFx.usdPerEur }
+          : null,
+      lastUpdatedAt:
+        Number.isFinite(lastFx?.fetchedAt) &&
+        now - (lastFx?.fetchedAt ?? 0) <= FX_TTL_MS
+          ? lastFx?.fetchedAt
+          : null,
     };
   } catch (error) {
     console.warn("Failed to hydrate calculator state", error);
@@ -509,6 +555,8 @@ const Calculator = () => {
   const isMountedRef = useRef(true);
   const hasMountedRef = useRef(false);
   const fetchInFlightRef = useRef(false);
+  const fxFailureCountRef = useRef(0);
+  const fxRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isResultsOpenState, setIsResultsOpenState] = useState(false);
   const isResultsOpenRef = useRef(false);
   const formChangeRef = useRef(false);
@@ -749,15 +797,16 @@ const Calculator = () => {
   });
 
   // Fetch exchange rates
-  const handleFetchRates = useCallback(async () => {
-    if (fetchInFlightRef.current || !isMountedRef.current) return;
+  const handleFetchRates = useCallback(async (): Promise<boolean> => {
+    if (fetchInFlightRef.current || !isMountedRef.current) return false;
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      fxFailureCountRef.current += 1;
       toast({
         title: t.ratesFallbackTitle,
         description: language === "en" ? "Offline — cannot refresh rates." : "Нет сети — обновление курсов недоступно.",
         variant: "destructive",
       });
-      return;
+      return false;
     }
     fetchInFlightRef.current = true;
     setIsLoadingRates(true);
@@ -790,6 +839,7 @@ const Calculator = () => {
         );
       }
 
+      fxFailureCountRef.current = 0;
       setFxSource(rates.isFallback ? "fallback" : "live");
 
       toast({
@@ -799,6 +849,10 @@ const Calculator = () => {
           : t.ratesUpdatedDescription(rates.krwPerUsd, rates.usdPerEur),
         variant: rates.isFallback ? "destructive" : "default",
       });
+      return !rates.isFallback;
+    } catch {
+      fxFailureCountRef.current += 1;
+      throw new Error("Failed to fetch rates");
     } finally {
       fetchInFlightRef.current = false;
       if (isMountedRef.current) {
@@ -830,13 +884,43 @@ const Calculator = () => {
     }
   }, [autoUpdateFX, handleFetchRates]);
 
-  // Auto-refresh rates on an interval when enabled
+  // Auto-refresh rates with backoff when enabled
   useEffect(() => {
     if (!autoUpdateFX) return;
-    const id = setInterval(() => {
-      handleFetchRates();
-    }, FX_REFRESH_MS);
-    return () => clearInterval(id);
+    let cancelled = false;
+    const MAX_BACKOFF_MS = 60 * 60 * 1000; // 1 hour
+
+    const scheduleNext = (delay: number) => {
+      if (cancelled) return;
+      if (fxRetryTimeoutRef.current) {
+        clearTimeout(fxRetryTimeoutRef.current);
+      }
+      fxRetryTimeoutRef.current = setTimeout(run, delay);
+    };
+
+    const run = async () => {
+      if (cancelled) return;
+      let success = false;
+      try {
+        success = await handleFetchRates();
+      } catch {
+        // errors are handled with failure count increment inside handleFetchRates
+      }
+      const backoffStep = Math.min(fxFailureCountRef.current, 5);
+      const delay = success
+        ? FX_REFRESH_MS
+        : Math.min(FX_REFRESH_MS * 2 ** backoffStep, MAX_BACKOFF_MS);
+      scheduleNext(delay);
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+      if (fxRetryTimeoutRef.current) {
+        clearTimeout(fxRetryTimeoutRef.current);
+      }
+    };
   }, [autoUpdateFX, handleFetchRates]);
 
   // Track last valid rates from manual edits within acceptable ranges

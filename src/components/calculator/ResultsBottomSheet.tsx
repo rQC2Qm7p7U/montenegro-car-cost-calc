@@ -62,6 +62,7 @@ export const ResultsBottomSheet = ({
   onScenarioChange,
 }: ResultsBottomSheetProps) => {
   const [openInfoKey, setOpenInfoKey] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const isRu = language === "ru";
   const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
     new Intl.NumberFormat("ru-RU", options).format(value).replace(/\u00A0/g, " ");
@@ -105,9 +106,11 @@ export const ResultsBottomSheet = ({
       ? `€${formatNumber(value, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
       : "—";
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
-      exportCalculationPDF({
+      await exportCalculationPDF({
         language,
         results,
         numberOfCars,
@@ -128,6 +131,8 @@ export const ResultsBottomSheet = ({
         description: isRu ? "Попробуйте еще раз." : "Could not generate PDF. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -848,10 +853,11 @@ export const ResultsBottomSheet = ({
           </Button>
           <Button 
             onClick={handleExportPDF}
-            className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90"
+            disabled={isExporting}
+            className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90 disabled:opacity-60"
           >
             <Download className="w-4 h-4" />
-            {isRu ? "Скачать PDF" : "Export PDF"}
+            {isExporting ? (isRu ? "Сохраняем..." : "Exporting...") : isRu ? "Скачать PDF" : "Export PDF"}
           </Button>
         </div>
       </BottomSheetFooter>

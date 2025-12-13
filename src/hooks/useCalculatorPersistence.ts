@@ -62,6 +62,7 @@ export const useCalculatorPersistence = ({
         numberOfCars,
         containerType,
         autoUpdateFX,
+        persistedAt: Date.now(),
       };
 
       try {
