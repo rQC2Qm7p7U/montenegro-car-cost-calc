@@ -22,7 +22,7 @@ export interface CarImportParams {
   speditorFee: number;
 }
 
-const getContainerConfig = (type: ContainerType): ContainerConfig =>
+export const getContainerConfig = (type: ContainerType): ContainerConfig =>
   type === "20ft"
     ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }
     : { maxCars: 4, freightUSD: 4150, localEUR: 420 };

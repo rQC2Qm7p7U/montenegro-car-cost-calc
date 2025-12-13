@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { getContainerConfig } from "@/lib/carImport";
 import type { Language } from "@/types/language";
 
 interface VehicleDetailsSectionProps {
@@ -154,9 +155,7 @@ export const VehicleDetailsSection = ({
       .format(Math.round(value))
       .replace(/\u00A0/g, " ");
   
-  const containerInfo = containerType === "20ft" 
-    ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }
-    : { maxCars: 4, freightUSD: 4150, localEUR: 420 };
+  const containerInfo = getContainerConfig(containerType);
 
   const customsInvalid = customsDuty < 0 || customsDuty > 30;
   const vatInvalid = vat < 0 || vat > 25;
@@ -235,7 +234,7 @@ export const VehicleDetailsSection = ({
                 <span className="font-medium text-sm">{t.twentyFt}</span>
               </div>
               <p className="text-xs text-muted-foreground">{t.maxCars(2)}</p>
-              <p className="text-xs font-medium text-primary mt-1">$3 150</p>
+              <p className="text-xs font-medium text-primary mt-1">${getContainerConfig("20ft").freightUSD.toLocaleString("en-US")}</p>
             </button>
             <button
               onClick={() => setContainerType("40ft")}
@@ -250,7 +249,7 @@ export const VehicleDetailsSection = ({
                 <span className="font-medium text-sm">{t.fortyFt}</span>
               </div>
               <p className="text-xs text-muted-foreground">{t.maxCars(4)}</p>
-              <p className="text-xs font-medium text-primary mt-1">$4 150</p>
+              <p className="text-xs font-medium text-primary mt-1">${getContainerConfig("40ft").freightUSD.toLocaleString("en-US")}</p>
             </button>
           </div>
         </div>

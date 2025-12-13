@@ -47,6 +47,14 @@ const DEFAULTS = {
 const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
   containerType === "20ft" ? 2 : 4;
 const SPEDITOR_FEE = 150 * 1.21;
+const clampToRange = (
+  value: number,
+  range: { min: number; max: number },
+  fallback: number
+) => {
+  const safe = Number.isFinite(value) ? value : fallback;
+  return Math.min(range.max, Math.max(range.min, safe));
+};
 
 const calculatorCopy: Record<
   Language,
@@ -175,16 +183,17 @@ type InitialState = {
 
 const readInitialState = (): InitialState => {
   try {
-    const params = new URLSearchParams(window.location.search);
+    const hashParams = window.location.hash ? window.location.hash.replace(/^#/, "") : "";
+    const params = new URLSearchParams(hashParams || window.location.search);
     const storedRaw = localStorage.getItem(PERSIST_KEY);
-    const stored = storedRaw ? JSON.parse(storedRaw) : {};
+    const stored: Record<string, unknown> = storedRaw ? JSON.parse(storedRaw) : {};
     const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
     const lastFx = storedFX ? JSON.parse(storedFX) : null;
 
     const parseNumber = (value: unknown, fallback: number) => {
-      if (value === null || value === undefined || value === "")
-        return fallback;
-      const num = Number(value);
+      if (value === null || value === undefined || value === "") return fallback;
+      const normalized = String(value).replace(/\s+/g, "").replace(/\u00A0/g, "").replace(",", ".");
+      const num = Number(normalized);
       return Number.isFinite(num) ? num : fallback;
     };
 
@@ -200,6 +209,12 @@ const readInitialState = (): InitialState => {
       return [];
     };
 
+    const preferUrl = <T,>(key: string, fallbackValue: T): T => {
+      const fromUrl = params.get(key);
+      if (fromUrl !== null && fromUrl !== "") return fromUrl as unknown as T;
+      return (stored as Record<string, T | undefined>)[key] ?? fallbackValue;
+    };
+
     const deriveLegacyRates = (krwToEur: number, usdToEur: number) => {
       if (!krwToEur || !usdToEur || krwToEur <= 0 || usdToEur <= 0) return null;
       const krwPerEur = 1 / krwToEur;
@@ -210,22 +225,20 @@ const readInitialState = (): InitialState => {
         : null;
     };
 
-    const urlState = {
-      carPrices: params.get("carPrices"),
-      krwPerUsdRate: params.get("krwPerUsdRate"),
-      usdPerEurRate: params.get("usdPerEurRate"),
-      customsDuty: params.get("customsDuty"),
-      vat: params.get("vat"),
-      translationPages: params.get("translationPages"),
-      homologationFee: params.get("homologationFee"),
-      miscellaneous: params.get("miscellaneous"),
-      scenario: params.get("scenario"),
-      numberOfCars: params.get("numberOfCars"),
-      containerType: params.get("containerType"),
-      autoUpdateFX: params.get("autoUpdateFX"),
+    const merged = {
+      carPrices: preferUrl("carPrices", stored.carPrices),
+      krwPerUsdRate: preferUrl("krwPerUsdRate", stored.krwPerUsdRate),
+      usdPerEurRate: preferUrl("usdPerEurRate", stored.usdPerEurRate),
+      customsDuty: preferUrl("customsDuty", stored.customsDuty),
+      vat: preferUrl("vat", stored.vat),
+      translationPages: preferUrl("translationPages", stored.translationPages),
+      homologationFee: preferUrl("homologationFee", stored.homologationFee),
+      miscellaneous: preferUrl("miscellaneous", stored.miscellaneous),
+      scenario: preferUrl("scenario", stored.scenario),
+      numberOfCars: preferUrl("numberOfCars", stored.numberOfCars),
+      containerType: preferUrl("containerType", stored.containerType),
+      autoUpdateFX: preferUrl("autoUpdateFX", stored.autoUpdateFX),
     };
-
-    const merged = { ...stored, ...urlState };
     const resolvedContainer =
       merged.containerType === "20ft" || merged.containerType === "40ft"
         ? merged.containerType
@@ -271,12 +284,14 @@ const readInitialState = (): InitialState => {
 
     return {
       carPrices: normalizedCarPrices,
-      krwPerUsdRate: parseNumber(
-        merged.krwPerUsdRate ?? legacyStoredRates?.krwPerUsd,
+      krwPerUsdRate: clampToRange(
+        parseNumber(merged.krwPerUsdRate ?? legacyStoredRates?.krwPerUsd, 1350),
+        FX_VALID_RANGES.krwPerUsd,
         1350
       ),
-      usdPerEurRate: parseNumber(
-        merged.usdPerEurRate ?? legacyStoredRates?.usdPerEur,
+      usdPerEurRate: clampToRange(
+        parseNumber(merged.usdPerEurRate ?? legacyStoredRates?.usdPerEur, 1.08),
+        FX_VALID_RANGES.usdPerEur,
         1.08
       ),
       customsDuty: parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
@@ -556,18 +571,28 @@ const Calculator = () => {
     (updater: SetStateAction<number>) => {
       const next =
         typeof updater === "function" ? updater(krwPerUsdRate) : updater;
-      dispatchTracked({ type: "setRates", krwPerUsdRate: next });
+      const clamped = clampToRange(
+        next,
+        FX_VALID_RANGES.krwPerUsd,
+        initialState.krwPerUsdRate
+      );
+      dispatchTracked({ type: "setRates", krwPerUsdRate: clamped });
     },
-    [dispatchTracked, krwPerUsdRate]
+    [dispatchTracked, initialState.krwPerUsdRate, krwPerUsdRate]
   );
 
   const setUsdPerEurRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
       const next =
         typeof updater === "function" ? updater(usdPerEurRate) : updater;
-      dispatchTracked({ type: "setRates", usdPerEurRate: next });
+      const clamped = clampToRange(
+        next,
+        FX_VALID_RANGES.usdPerEur,
+        initialState.usdPerEurRate
+      );
+      dispatchTracked({ type: "setRates", usdPerEurRate: clamped });
     },
-    [dispatchTracked, usdPerEurRate]
+    [dispatchTracked, initialState.usdPerEurRate, usdPerEurRate]
   );
 
   const setCustomsDutyTracked = useCallback(
@@ -715,6 +740,14 @@ const Calculator = () => {
   // Fetch exchange rates
   const handleFetchRates = useCallback(async () => {
     if (fetchInFlightRef.current || !isMountedRef.current) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      toast({
+        title: t.ratesFallbackTitle,
+        description: language === "en" ? "Offline — cannot refresh rates." : "Нет сети — обновление курсов недоступно.",
+        variant: "destructive",
+      });
+      return;
+    }
     fetchInFlightRef.current = true;
     setIsLoadingRates(true);
     try {
@@ -763,6 +796,7 @@ const Calculator = () => {
     }
   }, [
     dispatchTracked,
+    language,
     setLastUpdatedAtState,
     setLastValidRatesState,
     toast,
@@ -853,6 +887,7 @@ const Calculator = () => {
 
   const handleCopyShareLink = async () => {
     const url = window.location.href;
+    const activeElement = document.activeElement as HTMLElement | null;
     try {
       await navigator.clipboard.writeText(url);
       toast({
@@ -862,14 +897,31 @@ const Calculator = () => {
     } catch (error) {
       const textarea = document.createElement("textarea");
       textarea.value = url;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
       document.body.appendChild(textarea);
       textarea.select();
-      document.execCommand("copy");
-      document.body.removeChild(textarea);
-      toast({
-        title: t.shareSuccessTitle,
-        description: t.shareFallbackDescription,
-      });
+      let success = false;
+      try {
+        success = document.execCommand("copy");
+      } catch {
+        success = false;
+      } finally {
+        document.body.removeChild(textarea);
+        if (activeElement?.focus) activeElement.focus();
+      }
+      if (success) {
+        toast({
+          title: t.shareSuccessTitle,
+          description: t.shareFallbackDescription,
+        });
+      } else {
+        toast({
+          title: language === "en" ? "Copy failed" : "Не удалось скопировать",
+          description: language === "en" ? "Try copying the link manually." : "Попробуйте скопировать ссылку вручную.",
+          variant: "destructive",
+        });
+      }
     }
   };
 

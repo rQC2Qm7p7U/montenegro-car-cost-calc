@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RefreshCw, Coins } from "lucide-react";
 import type { Language } from "@/types/language";
+import { FX_VALID_RANGES } from "@/utils/currency";
 
 interface CurrencyRatesSectionProps {
   language: Language;
@@ -210,6 +211,9 @@ export const CurrencyRatesSection = ({
               </div>
             </button>
           )}
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {FX_VALID_RANGES.krwPerUsd.min}–{FX_VALID_RANGES.krwPerUsd.max} {t.perDollar}
+          </p>
         </div>
 
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
@@ -247,6 +251,9 @@ export const CurrencyRatesSection = ({
               </div>
             </button>
           )}
+          <p className="text-[11px] text-muted-foreground mt-1">
+            {FX_VALID_RANGES.usdPerEur.min.toFixed(2)}–{FX_VALID_RANGES.usdPerEur.max.toFixed(2)} {t.perEuro}
+          </p>
         </div>
       </div>
 

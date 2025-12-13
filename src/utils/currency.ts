@@ -66,6 +66,8 @@ export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
   try {
     const response = await fetch('https://api.exchangerate-api.com/v4/latest/EUR', {
       signal: controller.signal,
+      // Avoid leaking state via Referer headers.
+      referrerPolicy: "no-referrer",
     });
     if (!response.ok) throw new Error(`Failed to fetch rates: ${response.status}`);
     

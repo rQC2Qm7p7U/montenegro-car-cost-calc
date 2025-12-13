@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import type { CalculationResults } from '@/types/calculator';
 import type { Language } from '@/types/language';
+import { getContainerConfig } from '@/lib/carImport';
 
 interface ExportParams {
   language: Language;
@@ -39,9 +40,7 @@ export const exportCalculationPDF = ({
   const contentWidth = pageWidth - margin * 2;
   let y = 20;
 
-  const containerInfo = containerType === '20ft'
-    ? { freightUSD: 3150, localEUR: 350 }
-    : { freightUSD: 4150, localEUR: 420 };
+  const containerInfo = getContainerConfig(containerType);
   const scenarioLabel = scenario === 'company' ? (isRu ? 'компания' : 'company') : (isRu ? 'физлицо' : 'physical');
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);

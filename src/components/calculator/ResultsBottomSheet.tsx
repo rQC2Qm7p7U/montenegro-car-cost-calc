@@ -69,9 +69,6 @@ export const ResultsBottomSheet = ({
     formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
-  const containerInfo = containerType === "20ft" 
-    ? { freightUSD: 3150, localEUR: 350 }
-    : { freightUSD: 4150, localEUR: 420 };
   const carsCount = Math.max(1, results.carResults.length);
   const mneExpenses = Math.max(0, results.totalFinalCost - results.totalCarPrices);
 
@@ -80,8 +77,8 @@ export const ResultsBottomSheet = ({
     : 0;
 
   const physicalTotal = results.totalFinalCost;
-  const companyNet = results.totalFinalCost - results.totalVAT;
-  const vatRefundTotal = results.totalVAT;
+  const vatRefundTotal = results.totalVATRefund || 0;
+  const companyNet = results.totalNetCostForCompany || results.totalFinalCost;
   const eurPerUsdRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
   const avgCarPurchase = carsWithPrices.length
     ? results.totalCarPrices / carsWithPrices.length
