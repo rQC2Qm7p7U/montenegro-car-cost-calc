@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -23,6 +24,7 @@ import {
   TrendingUp
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { exportCalculationPDF } from "@/utils/pdfExport";
 import { toast } from "@/hooks/use-toast";
 
@@ -55,6 +57,7 @@ export const ResultsBottomSheet = ({
   onRecalculate,
   onScenarioChange,
 }: ResultsBottomSheetProps) => {
+  const [openInfoKey, setOpenInfoKey] = useState<string | null>(null);
   const formatEUR = (value: number) => Math.round(value).toLocaleString('de-DE');
   const formatEURWithCents = (value: number) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -381,20 +384,45 @@ export const ResultsBottomSheet = ({
                           value: car.miscellaneous,
                           tip: `Additional per-car costs you entered: €${formatEURWithCents(car.miscellaneous)}`,
                         },
-                      ].map((item) => (
-                        <Tooltip key={item.key}>
-                          <TooltipTrigger asChild>
-                            <div className="p-2 rounded bg-muted/30 text-center cursor-help">
-                              <p className="text-[10px] text-muted-foreground">{item.label}</p>
-                              <p className="font-semibold">€{formatEUR(item.value)}</p>
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="max-w-[240px] text-xs">
+                      ].map((item) => {
+                        const isOpen = openInfoKey === item.key;
+                        const explanation = (
+                          <div>
                             <p className="font-semibold mb-1">{item.label} calculation</p>
                             <p className="text-muted-foreground leading-snug">{item.tip}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      ))}
+                          </div>
+                        );
+
+                        return (
+                          <Popover
+                            key={item.key}
+                            open={isOpen}
+                            onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}
+                          >
+                            <Tooltip delayDuration={150}>
+                              <TooltipTrigger asChild>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="p-2 rounded bg-muted/30 text-center cursor-help w-full h-full"
+                                    onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                                    aria-label={`${item.label} calculation details`}
+                                  >
+                                    <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                                    <p className="font-semibold">€{formatEUR(item.value)}</p>
+                                  </button>
+                                </PopoverTrigger>
+                              </TooltipTrigger>
+                            </Tooltip>
+                            <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
+                              {explanation}
+                            </TooltipContent>
+                            <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                              {explanation}
+                            </PopoverContent>
+                          </Popover>
+                        );
+                      })}
                     </div>
 
                     {scenario === "company" && (
