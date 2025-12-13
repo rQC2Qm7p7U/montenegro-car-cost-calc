@@ -241,7 +241,7 @@ export const CarPricesSection = ({
             {completedCount}/{numberOfCars} entered
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Expected format: 12,345 €
+            Expected format: 12 345 €
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -283,7 +283,7 @@ export const CarPricesSection = ({
               <TooltipContent side="left">
                 <p className="max-w-xs text-sm">
                   Korean shorthand: '만원' = ×10,000<br />
-                  Example: 2,280 → 22,800,000 KRW
+                  Example: 2 280 → 22 800 000 KRW
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -339,7 +339,7 @@ export const CarPricesSection = ({
                     value={eurInputValues[index] ?? ""}
                     onChange={(e) => handlePriceChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder="12,345"
+                    placeholder="12 345"
                     className="input-focus-ring bg-background/50"
                   />
                   {preview && preview.carPrice > 0 && (
@@ -356,7 +356,7 @@ export const CarPricesSection = ({
                     value={krwInputValues[index] || ""}
                     onChange={(e) => handleKRWChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder={rawKRWMode ? "22,800,000" : "2,280"}
+                    placeholder={rawKRWMode ? "22 800 000" : "2 280"}
                     className="input-focus-ring bg-background/50"
                   />
                   {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (

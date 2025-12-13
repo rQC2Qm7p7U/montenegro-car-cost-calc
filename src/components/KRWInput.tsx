@@ -35,7 +35,7 @@ const KRWInput = ({ value, onChange, krwPerUsdRate, usdPerEurRate, disabled }: K
             <TooltipContent>
               <p className="max-w-xs text-sm">
                 Korean shorthand: '만원' means ×10,000.<br />
-                Example: 2,280만원 = 22,800,000 KRW
+                Example: 2 280만원 = 22 800 000 KRW
               </p>
             </TooltipContent>
           </Tooltip>
@@ -50,7 +50,7 @@ const KRWInput = ({ value, onChange, krwPerUsdRate, usdPerEurRate, disabled }: K
           const cleaned = e.target.value.replace(/[^\d,]/g, '');
           onChange(cleaned);
         }}
-        placeholder={rawKRWMode ? "22800000" : "2280"}
+        placeholder={rawKRWMode ? "22 800 000" : "2 280"}
         disabled={disabled}
         className="mt-1.5"
       />

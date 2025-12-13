@@ -139,7 +139,7 @@ export const CurrencyRatesSection = ({
               value={usdPerEurRate}
               onChange={(e) => setUsdPerEurRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditUsd(false)}
-              placeholder="1.0700"
+              placeholder="1,0700"
               className="input-focus-ring bg-background/50 h-10 text-sm"
             />
           ) : (
