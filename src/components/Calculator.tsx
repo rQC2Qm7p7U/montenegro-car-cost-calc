@@ -647,82 +647,59 @@ const Calculator = () => {
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 pb-24">
       <div className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
-          {/* Header */}
-          <header className="animate-fade-in mb-6">
-            {/* Top bar with actions */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="relative inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300">
-                <Ship className="w-6 h-6 text-primary-foreground" />
+          {/* Compact Header */}
+          <header className="animate-fade-in mb-4">
+            {/* Top row: Logo + Title + Actions */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-md">
+                <Ship className="w-5 h-5 text-primary-foreground" />
               </div>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleCopyShareLink}>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
+                  Car Import Calculator
+                </h1>
+                <p className="text-xs text-muted-foreground">Korea → Montenegro</p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleCopyShareLink}>
                   <Share2 className="w-4 h-4" />
-                  <span className="hidden sm:inline">Copy link</span>
                 </Button>
                 <ThemeToggle />
               </div>
             </div>
 
-            {/* Title */}
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 tracking-tight">
-              Montenegro Car Import
-            </h1>
-            <p className="text-sm text-muted-foreground mb-4">
-              Calculate import costs for vehicles from Korea
-            </p>
-            
-            {/* Status badges row */}
-            <div className="flex flex-wrap items-center gap-2 mb-3">
-              <Badge variant="outline" className="gap-1.5 text-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                {containerType}
-              </Badge>
-              <Badge variant="outline" className="gap-1.5 text-xs">
-                {numberOfCars} {numberOfCars === 1 ? 'Car' : 'Cars'}
-              </Badge>
-            </div>
-
-            {/* Rates info card */}
+            {/* Rates bar - inline compact */}
             <button
               type="button"
               onClick={() => setIsRatesSheetOpen(true)}
-              className="w-full p-3 rounded-xl bg-card border border-border/60 hover:border-primary/40 transition-all text-left shadow-sm"
+              className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-muted/50 border border-border/50 hover:border-primary/30 transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">1 EUR = </span>
-                    <span className="font-semibold text-foreground">
-                      {(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} KRW
-                    </span>
-                  </div>
-                  <div className="w-px h-4 bg-border" />
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">1 USD = </span>
-                    <span className="font-semibold text-foreground">
-                      {usdToEurRate.toFixed(4)} EUR
-                    </span>
-                  </div>
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">€1</span>
+                  <span className="font-medium text-foreground">
+                    = ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  {fxSource === "fallback" && (
-                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                  )}
-                  <RefreshCcw 
-                    className={`w-4 h-4 text-muted-foreground ${isLoadingRates ? "animate-spin" : ""}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFetchRates();
-                    }}
-                  />
+                <span className="text-border">|</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">$1</span>
+                  <span className="font-medium text-foreground">
+                    = €{usdToEurRate.toFixed(2)}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
-                <Clock className="w-3 h-3" />
-                <span>{renderFxUpdatedLabel()}</span>
+              <div className="flex items-center gap-1.5 text-muted-foreground">
                 {fxSource === "fallback" && (
-                  <span className="text-amber-600 dark:text-amber-400">• Fallback rates</span>
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 )}
+                <RefreshCcw 
+                  className={`w-3.5 h-3.5 ${isLoadingRates ? "animate-spin" : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleFetchRates();
+                  }}
+                />
               </div>
             </button>
           </header>
