@@ -22,6 +22,7 @@ import {
   Info,
   TrendingUp
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { exportCalculationPDF } from "@/utils/pdfExport";
 import { toast } from "@/hooks/use-toast";
 
@@ -55,11 +56,13 @@ export const ResultsBottomSheet = ({
   onScenarioChange,
 }: ResultsBottomSheetProps) => {
   const formatEUR = (value: number) => Math.round(value).toLocaleString('de-DE');
+  const formatEURWithCents = (value: number) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
   const containerInfo = containerType === "20ft" 
     ? { freightUSD: 3150, localEUR: 350 }
     : { freightUSD: 4150, localEUR: 420 };
+  const carsCount = Math.max(1, results.carResults.length);
 
   const avgFinalCost = carsWithPrices.length > 0 
     ? results.totalFinalCost / carsWithPrices.length 
@@ -341,30 +344,57 @@ export const ResultsBottomSheet = ({
                   
                   <div className="p-3">
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Freight</p>
-                        <p className="font-semibold">€{formatEUR(car.freightPerCar)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Customs</p>
-                        <p className="font-semibold">€{formatEUR(car.customs)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">VAT</p>
-                        <p className="font-semibold">€{formatEUR(car.vatAmount)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Services</p>
-                        <p className="font-semibold">€{formatEUR(car.portAgentFeePerCar + car.translationPerCar + car.speditorFee)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Homolog.</p>
-                        <p className="font-semibold">€{formatEUR(car.homologationFee)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Misc</p>
-                        <p className="font-semibold">€{formatEUR(car.miscellaneous)}</p>
-                      </div>
+                      {[
+                        {
+                          key: "freight",
+                          label: "Freight",
+                          value: car.freightPerCar,
+                          tip: `(${containerInfo.freightUSD} USD × ${usdToEurRate.toFixed(4)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
+                        },
+                        {
+                          key: "customs",
+                          label: "Customs",
+                          value: car.customs,
+                          tip: `CIF €${formatEURWithCents(car.cif)} × ${customsDuty}% duty = €${formatEURWithCents(car.customs)}`,
+                        },
+                        {
+                          key: "vat",
+                          label: "VAT",
+                          value: car.vatAmount,
+                          tip: `(CIF €${formatEURWithCents(car.cif)} + Customs €${formatEURWithCents(car.customs)}) × ${vat}% VAT = €${formatEURWithCents(car.vatAmount)}`,
+                        },
+                        {
+                          key: "services",
+                          label: "Services",
+                          value: car.portAgentFeePerCar + car.translationPerCar + car.speditorFee,
+                          tip: `Port & agent €${formatEURWithCents(car.portAgentFeePerCar)} + Translation €${formatEURWithCents(car.translationPerCar)} + Speditor €${formatEURWithCents(car.speditorFee)}`,
+                        },
+                        {
+                          key: "homologation",
+                          label: "Homolog.",
+                          value: car.homologationFee,
+                          tip: `Homologation fee per car: €${formatEURWithCents(car.homologationFee)}`,
+                        },
+                        {
+                          key: "misc",
+                          label: "Misc",
+                          value: car.miscellaneous,
+                          tip: `Additional per-car costs you entered: €${formatEURWithCents(car.miscellaneous)}`,
+                        },
+                      ].map((item) => (
+                        <Tooltip key={item.key}>
+                          <TooltipTrigger asChild>
+                            <div className="p-2 rounded bg-muted/30 text-center cursor-help">
+                              <p className="text-[10px] text-muted-foreground">{item.label}</p>
+                              <p className="font-semibold">€{formatEUR(item.value)}</p>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[240px] text-xs">
+                            <p className="font-semibold mb-1">{item.label} calculation</p>
+                            <p className="text-muted-foreground leading-snug">{item.tip}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ))}
                     </div>
 
                     {scenario === "company" && (
