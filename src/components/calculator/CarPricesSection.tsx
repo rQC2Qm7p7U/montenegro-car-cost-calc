@@ -93,7 +93,7 @@ export const CarPricesSection = ({
   };
 
   const completedCount = carPrices.filter(p => p > 0).length;
-  const carResultByIndex = new Map(results.carResults.map((car) => [car.carIndex, car]));
+  const carResultByIndex = new Map(results.carResults.map((car) => [car.carIndex - 1, car]));
 
   // Keep KRW inputs in sync with car count
   useEffect(() => {
