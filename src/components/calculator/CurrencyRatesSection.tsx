@@ -110,6 +110,7 @@ export const CurrencyRatesSection = ({
               value={krwPerUsdRate}
               onChange={(e) => setKrwPerUsdRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditKrw(false)}
+              onFocus={(e) => e.target.select()}
               placeholder="1350"
               className="input-focus-ring bg-background/50 h-10 text-sm"
             />
@@ -139,6 +140,7 @@ export const CurrencyRatesSection = ({
               value={usdPerEurRate}
               onChange={(e) => setUsdPerEurRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditUsd(false)}
+              onFocus={(e) => e.target.select()}
               placeholder="1,0700"
               className="input-focus-ring bg-background/50 h-10 text-sm"
             />

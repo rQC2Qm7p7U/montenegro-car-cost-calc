@@ -819,7 +819,7 @@ const Calculator = () => {
         <BottomSheetHeader className="flex items-center justify-between pb-3">
           <div>
             <p className="text-xs text-muted-foreground">Exchange Rates</p>
-            <h3 className="text-lg font-semibold text-foreground">KRW → USD & USD ↔ EUR</h3>
+            <h3 className="text-lg font-semibold text-foreground">KRW → USD & USD → EUR</h3>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsRatesSheetOpen(false)}>
             <X className="w-5 h-5" />
