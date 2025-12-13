@@ -500,6 +500,8 @@ const Calculator = () => {
     lastUpdatedAt,
   } = state;
   const t = calculatorCopy[language];
+  const controlButtonClasses =
+    "h-10 w-10 rounded-lg border border-border/60 bg-background/70 hover:border-primary/50 hover:bg-primary/5 transition-colors shadow-sm";
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
   const initialFxSource: "live" | "fallback" | "manual" | "restored" =
     initialState.lastValidRates ? "restored" : "fallback";
@@ -894,23 +896,25 @@ const Calculator = () => {
               <div className="flex items-center gap-1.5">
                 <Button
                   variant="outline"
-                  size="sm"
-                  className="h-9 px-3 text-xs"
+                  size="icon"
+                  className={`${controlButtonClasses} text-xs font-semibold`}
                   onClick={() =>
                     setLanguage((prev) => (prev === "en" ? "ru" : "en"))
                   }
+                  aria-label="Toggle language RU/EN"
                 >
                   {language === "en" ? "RU" : "EN"}
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-9 w-9"
+                  className={controlButtonClasses}
                   onClick={handleCopyShareLink}
+                  aria-label="Copy calculator link"
                 >
                   <Share2 className="w-4 h-4" />
                 </Button>
-                <ThemeToggle />
+                <ThemeToggle className={controlButtonClasses} />
               </div>
             </div>
 
