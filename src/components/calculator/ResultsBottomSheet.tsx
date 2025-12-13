@@ -66,6 +66,7 @@ export const ResultsBottomSheet = ({
     ? { freightUSD: 3150, localEUR: 350 }
     : { freightUSD: 4150, localEUR: 420 };
   const carsCount = Math.max(1, results.carResults.length);
+  const mneExpenses = Math.max(0, results.totalFinalCost - results.totalCarPrices);
 
   const avgFinalCost = carsWithPrices.length > 0 
     ? results.totalFinalCost / carsWithPrices.length 
@@ -303,6 +304,45 @@ export const ResultsBottomSheet = ({
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* MNE Expenses */}
+              <div className="border-t border-border/60">
+                <Tooltip delayDuration={150}>
+                  <Popover
+                    open={openInfoKey === "mne-expenses"}
+                    onOpenChange={(open) => setOpenInfoKey(open ? "mne-expenses" : null)}
+                  >
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full text-left p-3 flex items-center justify-between gap-2 bg-primary/5 hover:bg-primary/10 transition-colors cursor-help"
+                          onClick={() => setOpenInfoKey(openInfoKey === "mne-expenses" ? null : "mne-expenses")}
+                          aria-label="MNE expenses calculation details"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Info className="w-4 h-4 text-primary shrink-0" />
+                            <span className="text-sm font-medium truncate">MNE expenses</span>
+                          </div>
+                          <span className="font-bold text-primary shrink-0">€{formatEUR(mneExpenses)}</span>
+                        </button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[260px] text-xs hidden sm:block">
+                      <p className="font-semibold mb-1">MNE expenses calculation</p>
+                      <p className="text-muted-foreground leading-snug">
+                        Total €{formatEURWithCents(results.totalFinalCost)} − Vehicles €{formatEURWithCents(results.totalCarPrices)} = €{formatEURWithCents(mneExpenses)}
+                      </p>
+                    </TooltipContent>
+                    <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                      <p className="font-semibold mb-1">MNE expenses calculation</p>
+                      <p className="text-muted-foreground leading-snug">
+                        Total €{formatEURWithCents(results.totalFinalCost)} − Vehicles €{formatEURWithCents(results.totalCarPrices)} = €{formatEURWithCents(mneExpenses)}
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </Tooltip>
               </div>
 
               {/* Grand Total */}
