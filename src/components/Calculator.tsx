@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useReducer } from "react";
 import type { SetStateAction } from "react";
-import { Ship, Calculator as CalcIcon, X, Share2, RefreshCcw, AlertTriangle } from "lucide-react";
+import {
+  Ship,
+  Calculator as CalcIcon,
+  X,
+  Share2,
+  RefreshCcw,
+  AlertTriangle,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
@@ -11,7 +18,11 @@ import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
 import { CarPricesSection } from "./calculator/CarPricesSection";
 import { ResultsBottomSheet } from "./calculator/ResultsBottomSheet";
 import { Button } from "@/components/ui/button";
-import { BottomSheet, BottomSheetBody, BottomSheetHeader } from "@/components/ui/bottom-sheet";
+import {
+  BottomSheet,
+  BottomSheetBody,
+  BottomSheetHeader,
+} from "@/components/ui/bottom-sheet";
 import type { Language } from "@/types/language";
 
 const PERSIST_KEY = "car-import-state-v1";
@@ -63,17 +74,21 @@ const calculatorCopy: Record<
     ratesSheetSubtitle: "KRW → USD & USD → EUR",
     shareSuccessTitle: "Link copied",
     shareSuccessDescription: "Share this configured calculator.",
-    shareFallbackDescription: "Clipboard access was limited; used fallback copy.",
+    shareFallbackDescription:
+      "Clipboard access was limited; used fallback copy.",
     ratesUpdatedTitle: "Rates updated",
     ratesFallbackTitle: "Using fallback rates",
     ratesUpdatedDescription: (krw, usd) =>
-      `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(krw)).replace(/\u00A0/g, " ")} KRW | €1 = $${usd
+      `$1 = ${new Intl.NumberFormat("ru-RU")
+        .format(Math.round(krw))
+        .replace(/\u00A0/g, " ")} KRW | €1 = $${usd
         .toLocaleString("ru-RU", {
           minimumFractionDigits: 4,
           maximumFractionDigits: 4,
         })
         .replace(/\u00A0/g, " ")}`,
-    ratesFallbackDescription: "Live rates were unavailable or invalid; using safe defaults.",
+    ratesFallbackDescription:
+      "Live rates were unavailable or invalid; using safe defaults.",
     fxStatus: {
       notUpdated: "Not updated yet",
       justNow: "Just now",
@@ -92,17 +107,21 @@ const calculatorCopy: Record<
     ratesSheetSubtitle: "KRW → USD и USD → EUR",
     shareSuccessTitle: "Ссылка скопирована",
     shareSuccessDescription: "Поделитесь настроенным калькулятором.",
-    shareFallbackDescription: "Доступ к буферу ограничен, скопировали альтернативным способом.",
+    shareFallbackDescription:
+      "Доступ к буферу ограничен, скопировали альтернативным способом.",
     ratesUpdatedTitle: "Курсы обновлены",
     ratesFallbackTitle: "Используем резервные курсы",
     ratesUpdatedDescription: (krw, usd) =>
-      `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(krw)).replace(/\u00A0/g, " ")} KRW | €1 = $${usd
+      `$1 = ${new Intl.NumberFormat("ru-RU")
+        .format(Math.round(krw))
+        .replace(/\u00A0/g, " ")} KRW | €1 = $${usd
         .toLocaleString("ru-RU", {
           minimumFractionDigits: 4,
           maximumFractionDigits: 4,
         })
         .replace(/\u00A0/g, " ")}`,
-    ratesFallbackDescription: "Не удалось получить живые курсы, используем безопасные значения.",
+    ratesFallbackDescription:
+      "Не удалось получить живые курсы, используем безопасные значения.",
     fxStatus: {
       notUpdated: "Еще не обновлялось",
       justNow: "Только что",
@@ -111,7 +130,9 @@ const calculatorCopy: Record<
     },
     calculateReady: "Рассчитать",
     calculateMissing: (remaining: number) =>
-      `Укажите еще ${remaining} цен${remaining === 1 ? "у" : remaining < 5 ? "ы" : ""}`,
+      `Заполните еще ${remaining} цен${
+        remaining === 1 ? "у" : remaining < 5 ? "ы" : ""
+      }`,
     copyRatesLabel: "Обновлено",
   },
 };
@@ -155,7 +176,8 @@ const readInitialState = (): InitialState => {
     const lastFx = storedFX ? JSON.parse(storedFX) : null;
 
     const parseNumber = (value: unknown, fallback: number) => {
-      if (value === null || value === undefined || value === "") return fallback;
+      if (value === null || value === undefined || value === "")
+        return fallback;
       const num = Number(value);
       return Number.isFinite(num) ? num : fallback;
     };
@@ -204,33 +226,40 @@ const readInitialState = (): InitialState => {
         : "40ft";
     const resolvedNumberOfCars = Math.min(
       getContainerMaxCars(resolvedContainer),
-      Math.max(1, parseNumber(merged.numberOfCars, 1)),
+      Math.max(1, parseNumber(merged.numberOfCars, 1))
     );
 
     const parsedCarPrices = parseArray(
-      merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined,
+      merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined
     )
       .map((price) => Math.max(0, parseNumber(price, 0)))
       .slice(0, resolvedNumberOfCars);
 
     const normalizedCarPrices =
       parsedCarPrices.length > 0
-        ? Array.from({ length: resolvedNumberOfCars }, (_, index) => parsedCarPrices[index] ?? 0)
+        ? Array.from(
+            { length: resolvedNumberOfCars },
+            (_, index) => parsedCarPrices[index] ?? 0
+          )
         : Array.from({ length: resolvedNumberOfCars }, () => 0);
 
     const legacyStoredRates = deriveLegacyRates(
       parseNumber(
-        (merged as Record<string, unknown>).krwToEurRate ?? params.get("krwToEurRate"),
-        NaN,
+        (merged as Record<string, unknown>).krwToEurRate ??
+          params.get("krwToEurRate"),
+        NaN
       ),
       parseNumber(
-        (merged as Record<string, unknown>).usdToEurRate ?? params.get("usdToEurRate"),
-        NaN,
-      ),
+        (merged as Record<string, unknown>).usdToEurRate ??
+          params.get("usdToEurRate"),
+        NaN
+      )
     );
 
     const lastValidRates =
-      lastFx && Number.isFinite(lastFx.krwPerUsd) && Number.isFinite(lastFx.usdPerEur)
+      lastFx &&
+      Number.isFinite(lastFx.krwPerUsd) &&
+      Number.isFinite(lastFx.usdPerEur)
         ? { krwPerUsd: lastFx.krwPerUsd, usdPerEur: lastFx.usdPerEur }
         : deriveLegacyRates(lastFx?.krwToEur, lastFx?.usdToEur);
 
@@ -238,23 +267,34 @@ const readInitialState = (): InitialState => {
       carPrices: normalizedCarPrices,
       krwPerUsdRate: parseNumber(
         merged.krwPerUsdRate ?? legacyStoredRates?.krwPerUsd,
-        1350,
+        1350
       ),
       usdPerEurRate: parseNumber(
         merged.usdPerEurRate ?? legacyStoredRates?.usdPerEur,
-        1.08,
+        1.08
       ),
       customsDuty: parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
       vat: parseNumber(merged.vat, DEFAULTS.vat),
-      translationPages: Math.max(0, parseNumber(merged.translationPages, DEFAULTS.translationPages)),
-      homologationFee: Math.max(0, parseNumber(merged.homologationFee, DEFAULTS.homologationFee)),
-      miscellaneous: Math.max(0, parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)),
+      translationPages: Math.max(
+        0,
+        parseNumber(merged.translationPages, DEFAULTS.translationPages)
+      ),
+      homologationFee: Math.max(
+        0,
+        parseNumber(merged.homologationFee, DEFAULTS.homologationFee)
+      ),
+      miscellaneous: Math.max(
+        0,
+        parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous)
+      ),
       scenario: merged.scenario === "company" ? "company" : "physical",
       numberOfCars: resolvedNumberOfCars,
       containerType: resolvedContainer,
       autoUpdateFX: parseBool(merged.autoUpdateFX, false),
       lastValidRates,
-      lastUpdatedAt: Number.isFinite(lastFx?.fetchedAt) ? lastFx?.fetchedAt : null,
+      lastUpdatedAt: Number.isFinite(lastFx?.fetchedAt)
+        ? lastFx?.fetchedAt
+        : null,
     };
   } catch (error) {
     console.warn("Failed to hydrate calculator state", error);
@@ -319,7 +359,7 @@ const clampCars = (value: number, containerType: "20ft" | "40ft") =>
 const ensureCarPriceLength = (
   prices: number[],
   numberOfCars: number,
-  containerType: "20ft" | "40ft",
+  containerType: "20ft" | "40ft"
 ) => {
   const target = clampCars(numberOfCars, containerType);
   const sanitized = prices
@@ -332,34 +372,52 @@ const ensureCarPriceLength = (
   return sanitized;
 };
 
-const calculatorReducer = (state: CalculatorState, action: Action): CalculatorState => {
+const calculatorReducer = (
+  state: CalculatorState,
+  action: Action
+): CalculatorState => {
   switch (action.type) {
     case "setCarPrices":
       return {
         ...state,
-        carPrices: ensureCarPriceLength(action.value, state.numberOfCars, state.containerType),
+        carPrices: ensureCarPriceLength(
+          action.value,
+          state.numberOfCars,
+          state.containerType
+        ),
       };
     case "setCarPricesWithUpdater": {
       const nextValue =
-        typeof action.updater === "function" ? action.updater(state.carPrices) : action.updater;
+        typeof action.updater === "function"
+          ? action.updater(state.carPrices)
+          : action.updater;
       return {
         ...state,
-        carPrices: ensureCarPriceLength(nextValue, state.numberOfCars, state.containerType),
+        carPrices: ensureCarPriceLength(
+          nextValue,
+          state.numberOfCars,
+          state.containerType
+        ),
       };
     }
     case "updateCarPrice": {
       const next = ensureCarPriceLength(
         [...state.carPrices],
         state.numberOfCars,
-        state.containerType,
+        state.containerType
       );
-      next[action.index] = !Number.isFinite(action.value) || action.value < 0 ? 0 : action.value;
+      next[action.index] =
+        !Number.isFinite(action.value) || action.value < 0 ? 0 : action.value;
       return { ...state, carPrices: next };
     }
     case "setNumberOfCars": {
       const nextCount = clampCars(action.value, state.containerType);
       const base = state.carPrices.slice(0, nextCount);
-      const nextPrices = ensureCarPriceLength(base, nextCount, state.containerType);
+      const nextPrices = ensureCarPriceLength(
+        base,
+        nextCount,
+        state.containerType
+      );
       return {
         ...state,
         numberOfCars: nextCount,
@@ -445,8 +503,12 @@ const Calculator = () => {
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
   const initialFxSource: "live" | "fallback" | "manual" | "restored" =
     initialState.lastValidRates ? "restored" : "fallback";
-  const [fxSource, setFxSource] = useState<"live" | "fallback" | "manual" | "restored">(initialFxSource);
-  const fxUpdateSourceRef = useRef<"none" | "live" | "fallback" | "restored">(initialFxSource);
+  const [fxSource, setFxSource] = useState<
+    "live" | "fallback" | "manual" | "restored"
+  >(initialFxSource);
+  const fxUpdateSourceRef = useRef<"none" | "live" | "fallback" | "restored">(
+    initialFxSource
+  );
 
   // Other costs and toggles handled in reducer above
   const [isRatesSheetOpen, setIsRatesSheetOpen] = useState(false);
@@ -472,38 +534,41 @@ const Calculator = () => {
       }
       dispatch(action);
     },
-    [dispatch, markFormChanged],
+    [dispatch, markFormChanged]
   );
 
   const setCarPricesTracked = useCallback(
     (updater: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => {
       dispatchTracked({ type: "setCarPricesWithUpdater", updater }, options);
     },
-    [dispatchTracked],
+    [dispatchTracked]
   );
 
   const setKrwPerUsdRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(krwPerUsdRate) : updater;
+      const next =
+        typeof updater === "function" ? updater(krwPerUsdRate) : updater;
       dispatchTracked({ type: "setRates", krwPerUsdRate: next });
     },
-    [dispatchTracked, krwPerUsdRate],
+    [dispatchTracked, krwPerUsdRate]
   );
 
   const setUsdPerEurRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(usdPerEurRate) : updater;
+      const next =
+        typeof updater === "function" ? updater(usdPerEurRate) : updater;
       dispatchTracked({ type: "setRates", usdPerEurRate: next });
     },
-    [dispatchTracked, usdPerEurRate],
+    [dispatchTracked, usdPerEurRate]
   );
 
   const setCustomsDutyTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(customsDuty) : updater;
+      const next =
+        typeof updater === "function" ? updater(customsDuty) : updater;
       dispatchTracked({ type: "setCustomsDuty", value: next });
     },
-    [customsDuty, dispatchTracked],
+    [customsDuty, dispatchTracked]
   );
 
   const setVatTracked = useCallback(
@@ -511,68 +576,73 @@ const Calculator = () => {
       const next = typeof updater === "function" ? updater(vat) : updater;
       dispatchTracked({ type: "setVat", value: next });
     },
-    [dispatchTracked, vat],
+    [dispatchTracked, vat]
   );
 
   const setTranslationPagesTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(translationPages) : updater;
+      const next =
+        typeof updater === "function" ? updater(translationPages) : updater;
       dispatchTracked({ type: "setTranslationPages", value: next });
     },
-    [dispatchTracked, translationPages],
+    [dispatchTracked, translationPages]
   );
 
   const setHomologationFeeTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(homologationFee) : updater;
+      const next =
+        typeof updater === "function" ? updater(homologationFee) : updater;
       dispatchTracked({ type: "setHomologationFee", value: next });
     },
-    [dispatchTracked, homologationFee],
+    [dispatchTracked, homologationFee]
   );
 
   const setMiscellaneousTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(miscellaneous) : updater;
+      const next =
+        typeof updater === "function" ? updater(miscellaneous) : updater;
       dispatchTracked({ type: "setMiscellaneous", value: next });
     },
-    [dispatchTracked, miscellaneous],
+    [dispatchTracked, miscellaneous]
   );
 
   const setScenarioTracked = useCallback(
     (next: "physical" | "company") => {
       dispatchTracked({ type: "setScenario", value: next });
     },
-    [dispatchTracked],
+    [dispatchTracked]
   );
 
   const setNumberOfCarsTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(numberOfCars) : updater;
+      const next =
+        typeof updater === "function" ? updater(numberOfCars) : updater;
       dispatchTracked({ type: "setNumberOfCars", value: next });
     },
-    [dispatchTracked, numberOfCars],
+    [dispatchTracked, numberOfCars]
   );
 
   const setContainerTypeTracked = useCallback(
     (next: "20ft" | "40ft") => {
       dispatchTracked({ type: "setContainerType", value: next });
     },
-    [dispatchTracked],
+    [dispatchTracked]
   );
 
   const setAutoUpdateFXTracked = useCallback(
     (updater: SetStateAction<boolean>) => {
-      const next = typeof updater === "function" ? updater(autoUpdateFX) : updater;
+      const next =
+        typeof updater === "function" ? updater(autoUpdateFX) : updater;
       dispatchTracked({ type: "setAutoUpdateFX", value: next });
     },
-    [autoUpdateFX, dispatchTracked],
+    [autoUpdateFX, dispatchTracked]
   );
 
   useEffect(
     () => () => {
       isMountedRef.current = false;
     },
-    [],
+    []
   );
 
   useEffect(() => {
@@ -607,14 +677,14 @@ const Calculator = () => {
     (value: CalculatorState["lastValidRates"]) => {
       dispatch({ type: "setLastValidRates", value });
     },
-    [dispatch],
+    [dispatch]
   );
 
   const setLastUpdatedAtState = useCallback(
     (value: number | null) => {
       dispatch({ type: "setLastUpdatedAt", value });
     },
-    [dispatch],
+    [dispatch]
   );
 
   const usdToEurRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
@@ -644,11 +714,18 @@ const Calculator = () => {
       fxUpdateSourceRef.current = rates.isFallback ? "fallback" : "live";
       if (!isMountedRef.current) return;
       dispatchTracked(
-        { type: "setRates", krwPerUsdRate: rates.krwPerUsd, usdPerEurRate: rates.usdPerEur },
-        { skipDirty: true },
+        {
+          type: "setRates",
+          krwPerUsdRate: rates.krwPerUsd,
+          usdPerEurRate: rates.usdPerEur,
+        },
+        { skipDirty: true }
       );
       if (!rates.isFallback) {
-        setLastValidRatesState({ krwPerUsd: rates.krwPerUsd, usdPerEur: rates.usdPerEur });
+        setLastValidRatesState({
+          krwPerUsd: rates.krwPerUsd,
+          usdPerEur: rates.usdPerEur,
+        });
         const fetchedAt = rates.fetchedAt || Date.now();
         setLastUpdatedAtState(fetchedAt);
         localStorage.setItem(
@@ -657,7 +734,7 @@ const Calculator = () => {
             krwPerUsd: rates.krwPerUsd,
             usdPerEur: rates.usdPerEur,
             fetchedAt,
-          }),
+          })
         );
       }
 
@@ -676,7 +753,13 @@ const Calculator = () => {
         setIsLoadingRates(false);
       }
     }
-  }, [dispatchTracked, setLastUpdatedAtState, setLastValidRatesState, toast, t]);
+  }, [
+    dispatchTracked,
+    setLastUpdatedAtState,
+    setLastValidRatesState,
+    toast,
+    t,
+  ]);
 
   // Fetch latest exchange rates on initial load
   useEffect(() => {
@@ -714,18 +797,27 @@ const Calculator = () => {
     if (krwValid && usdValid) {
       const source = fxUpdateSourceRef.current;
       if (source !== "none") {
-        setFxSource(source === "fallback" ? "fallback" : source === "live" ? "live" : "restored");
+        setFxSource(
+          source === "fallback"
+            ? "fallback"
+            : source === "live"
+            ? "live"
+            : "restored"
+        );
         fxUpdateSourceRef.current = "none";
       } else {
         setFxSource("manual");
       }
 
-      setLastValidRatesState({ krwPerUsd: krwPerUsdRate, usdPerEur: usdPerEurRate });
+      setLastValidRatesState({
+        krwPerUsd: krwPerUsdRate,
+        usdPerEur: usdPerEurRate,
+      });
     }
   }, [krwPerUsdRate, setLastValidRatesState, usdPerEurRate]);
 
   // Check if all car prices are filled
-  const completedCars = carPrices.filter(p => p > 0).length;
+  const completedCars = carPrices.filter((p) => p > 0).length;
   const allPricesFilled = completedCars === numberOfCars;
 
   // Handle calculate button click
@@ -745,7 +837,8 @@ const Calculator = () => {
 
   const handleRatesTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
     if (ratesSheetTouchStart.current === null) return;
-    const deltaX = (e.changedTouches[0]?.clientX ?? 0) - ratesSheetTouchStart.current;
+    const deltaX =
+      (e.changedTouches[0]?.clientX ?? 0) - ratesSheetTouchStart.current;
     if (deltaX < -40) setIsRatesSheetOpen(false);
     ratesSheetTouchStart.current = null;
   };
@@ -803,11 +896,18 @@ const Calculator = () => {
                   variant="outline"
                   size="sm"
                   className="h-9 px-3 text-xs"
-                  onClick={() => setLanguage((prev) => (prev === "en" ? "ru" : "en"))}
+                  onClick={() =>
+                    setLanguage((prev) => (prev === "en" ? "ru" : "en"))
+                  }
                 >
                   {language === "en" ? "RU" : "EN"}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleCopyShareLink}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={handleCopyShareLink}
+                >
                   <Share2 className="w-4 h-4" />
                 </Button>
                 <ThemeToggle />
@@ -824,14 +924,18 @@ const Calculator = () => {
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">$1</span>
                   <span className="font-medium text-foreground">
-                    = ₩{new Intl.NumberFormat("ru-RU").format(Math.round(krwPerUsdRate)).replace(/\u00A0/g, " ")}
+                    = ₩
+                    {new Intl.NumberFormat("ru-RU")
+                      .format(Math.round(krwPerUsdRate))
+                      .replace(/\u00A0/g, " ")}
                   </span>
                 </div>
                 <span className="text-border">|</span>
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">€1</span>
                   <span className="font-medium text-foreground">
-                    = ${usdPerEurRate
+                    = $
+                    {usdPerEurRate
                       .toLocaleString("ru-RU", {
                         minimumFractionDigits: 4,
                         maximumFractionDigits: 4,
@@ -844,8 +948,10 @@ const Calculator = () => {
                 {fxSource === "fallback" && (
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
                 )}
-                <RefreshCcw 
-                  className={`w-3.5 h-3.5 ${isLoadingRates ? "animate-spin" : ""}`}
+                <RefreshCcw
+                  className={`w-3.5 h-3.5 ${
+                    isLoadingRates ? "animate-spin" : ""
+                  }`}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleFetchRates();
@@ -941,14 +1047,23 @@ const Calculator = () => {
         <BottomSheetHeader className="flex items-center justify-between pb-3">
           <div>
             <p className="text-xs text-muted-foreground">{t.ratesSheetTitle}</p>
-            <h3 className="text-lg font-semibold text-foreground">{t.ratesSheetSubtitle}</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              {t.ratesSheetSubtitle}
+            </h3>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsRatesSheetOpen(false)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsRatesSheetOpen(false)}
+          >
             <X className="w-5 h-5" />
           </Button>
         </BottomSheetHeader>
         <BottomSheetBody className="pt-2">
-          <div onTouchStart={handleRatesTouchStart} onTouchEnd={handleRatesTouchEnd}>
+          <div
+            onTouchStart={handleRatesTouchStart}
+            onTouchEnd={handleRatesTouchEnd}
+          >
             <CurrencyRatesSection
               language={language}
               autoUpdateFX={autoUpdateFX}
