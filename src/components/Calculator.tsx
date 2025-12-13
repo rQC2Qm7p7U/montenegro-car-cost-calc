@@ -32,8 +32,8 @@ const SPEDITOR_FEE = 150 * 1.21;
 
 type InitialState = {
   carPrices: number[];
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   customsDuty: number;
   vat: number;
   translationPages: number;
@@ -43,7 +43,7 @@ type InitialState = {
   numberOfCars: number;
   containerType: "20ft" | "40ft";
   autoUpdateFX: boolean;
-  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  lastValidRates: { krwPerUsd: number; usdPerEur: number } | null;
   lastUpdatedAt: number | null;
 };
 
@@ -73,10 +73,20 @@ const readInitialState = (): InitialState => {
       return [];
     };
 
+    const deriveLegacyRates = (krwToEur: number, usdToEur: number) => {
+      if (!krwToEur || !usdToEur || krwToEur <= 0 || usdToEur <= 0) return null;
+      const krwPerEur = 1 / krwToEur;
+      const usdPerEur = 1 / usdToEur;
+      const krwPerUsd = krwPerEur / usdPerEur;
+      return Number.isFinite(krwPerUsd) && Number.isFinite(usdPerEur)
+        ? { krwPerUsd, usdPerEur }
+        : null;
+    };
+
     const urlState = {
       carPrices: params.get("carPrices"),
-      krwToEurRate: params.get("krwToEurRate"),
-      usdToEurRate: params.get("usdToEurRate"),
+      krwPerUsdRate: params.get("krwPerUsdRate"),
+      usdPerEurRate: params.get("usdPerEurRate"),
       customsDuty: params.get("customsDuty"),
       vat: params.get("vat"),
       translationPages: params.get("translationPages"),
@@ -109,15 +119,32 @@ const readInitialState = (): InitialState => {
         ? Array.from({ length: resolvedNumberOfCars }, (_, index) => parsedCarPrices[index] ?? 0)
         : Array.from({ length: resolvedNumberOfCars }, () => 0);
 
+    const legacyStoredRates = deriveLegacyRates(
+      parseNumber(
+        (merged as Record<string, unknown>).krwToEurRate ?? params.get("krwToEurRate"),
+        NaN,
+      ),
+      parseNumber(
+        (merged as Record<string, unknown>).usdToEurRate ?? params.get("usdToEurRate"),
+        NaN,
+      ),
+    );
+
     const lastValidRates =
-      lastFx && Number.isFinite(lastFx.krwToEur) && Number.isFinite(lastFx.usdToEur)
-        ? { krwToEur: lastFx.krwToEur, usdToEur: lastFx.usdToEur }
-        : null;
+      lastFx && Number.isFinite(lastFx.krwPerUsd) && Number.isFinite(lastFx.usdPerEur)
+        ? { krwPerUsd: lastFx.krwPerUsd, usdPerEur: lastFx.usdPerEur }
+        : deriveLegacyRates(lastFx?.krwToEur, lastFx?.usdToEur);
 
     return {
       carPrices: normalizedCarPrices,
-      krwToEurRate: parseNumber(merged.krwToEurRate, 0.00068),
-      usdToEurRate: parseNumber(merged.usdToEurRate, 0.93),
+      krwPerUsdRate: parseNumber(
+        merged.krwPerUsdRate ?? legacyStoredRates?.krwPerUsd,
+        1350,
+      ),
+      usdPerEurRate: parseNumber(
+        merged.usdPerEurRate ?? legacyStoredRates?.usdPerEur,
+        1.08,
+      ),
       customsDuty: parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
       vat: parseNumber(merged.vat, DEFAULTS.vat),
       translationPages: Math.max(0, parseNumber(merged.translationPages, DEFAULTS.translationPages)),
@@ -136,8 +163,8 @@ const readInitialState = (): InitialState => {
 
   return {
     carPrices: [0],
-    krwToEurRate: 0.00068,
-    usdToEurRate: 0.93,
+    krwPerUsdRate: 1350,
+    usdPerEurRate: 1.08,
     customsDuty: DEFAULTS.customsDuty,
     vat: DEFAULTS.vat,
     translationPages: DEFAULTS.translationPages,
@@ -154,8 +181,8 @@ const readInitialState = (): InitialState => {
 
 type CalculatorState = {
   carPrices: number[];
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   customsDuty: number;
   vat: number;
   translationPages: number;
@@ -165,7 +192,7 @@ type CalculatorState = {
   numberOfCars: number;
   containerType: "20ft" | "40ft";
   autoUpdateFX: boolean;
-  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  lastValidRates: { krwPerUsd: number; usdPerEur: number } | null;
   lastUpdatedAt: number | null;
 };
 
@@ -182,7 +209,7 @@ type Action =
   | { type: "setHomologationFee"; value: number }
   | { type: "setMiscellaneous"; value: number }
   | { type: "setAutoUpdateFX"; value: boolean }
-  | { type: "setRates"; krwToEurRate?: number; usdToEurRate?: number }
+  | { type: "setRates"; krwPerUsdRate?: number; usdPerEurRate?: number }
   | { type: "setLastValidRates"; value: CalculatorState["lastValidRates"] }
   | { type: "setLastUpdatedAt"; value: number | null }
   | { type: "reset"; value: CalculatorState };
@@ -267,8 +294,8 @@ const calculatorReducer = (state: CalculatorState, action: Action): CalculatorSt
     case "setRates":
       return {
         ...state,
-        krwToEurRate: action.krwToEurRate ?? state.krwToEurRate,
-        usdToEurRate: action.usdToEurRate ?? state.usdToEurRate,
+        krwPerUsdRate: action.krwPerUsdRate ?? state.krwPerUsdRate,
+        usdPerEurRate: action.usdPerEurRate ?? state.usdPerEurRate,
       };
     case "setLastValidRates":
       return { ...state, lastValidRates: action.value };
@@ -300,8 +327,8 @@ const Calculator = () => {
   const [state, dispatch] = useReducer(calculatorReducer, initialState);
   const {
     carPrices,
-    krwToEurRate,
-    usdToEurRate,
+    krwPerUsdRate,
+    usdPerEurRate,
     autoUpdateFX,
     customsDuty,
     vat,
@@ -354,20 +381,20 @@ const Calculator = () => {
     [dispatchTracked],
   );
 
-  const setKrwToEurRateTracked = useCallback(
+  const setKrwPerUsdRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(krwToEurRate) : updater;
-      dispatchTracked({ type: "setRates", krwToEurRate: next });
+      const next = typeof updater === "function" ? updater(krwPerUsdRate) : updater;
+      dispatchTracked({ type: "setRates", krwPerUsdRate: next });
     },
-    [dispatchTracked, krwToEurRate],
+    [dispatchTracked, krwPerUsdRate],
   );
 
-  const setUsdToEurRateTracked = useCallback(
+  const setUsdPerEurRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(usdToEurRate) : updater;
-      dispatchTracked({ type: "setRates", usdToEurRate: next });
+      const next = typeof updater === "function" ? updater(usdPerEurRate) : updater;
+      dispatchTracked({ type: "setRates", usdPerEurRate: next });
     },
-    [dispatchTracked, usdToEurRate],
+    [dispatchTracked, usdPerEurRate],
   );
 
   const setCustomsDutyTracked = useCallback(
@@ -453,8 +480,8 @@ const Calculator = () => {
     hasMountedRef,
     state: {
       carPrices,
-      krwToEurRate,
-      usdToEurRate,
+      krwPerUsdRate,
+      usdPerEurRate,
       customsDuty,
       vat,
       translationPages,
@@ -481,6 +508,8 @@ const Calculator = () => {
     [dispatch],
   );
 
+  const usdToEurRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
+
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
     carPrices,
@@ -506,18 +535,18 @@ const Calculator = () => {
       fxUpdateSourceRef.current = rates.isFallback ? "fallback" : "live";
       if (!isMountedRef.current) return;
       dispatchTracked(
-        { type: "setRates", krwToEurRate: rates.krwToEur, usdToEurRate: rates.usdToEur },
+        { type: "setRates", krwPerUsdRate: rates.krwPerUsd, usdPerEurRate: rates.usdPerEur },
         { skipDirty: true },
       );
       if (!rates.isFallback) {
-        setLastValidRatesState({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
+        setLastValidRatesState({ krwPerUsd: rates.krwPerUsd, usdPerEur: rates.usdPerEur });
         const fetchedAt = rates.fetchedAt || Date.now();
         setLastUpdatedAtState(fetchedAt);
         localStorage.setItem(
           FX_LAST_SUCCESS_KEY,
           JSON.stringify({
-            krwToEur: rates.krwToEur,
-            usdToEur: rates.usdToEur,
+            krwPerUsd: rates.krwPerUsd,
+            usdPerEur: rates.usdPerEur,
             fetchedAt,
           }),
         );
@@ -529,7 +558,7 @@ const Calculator = () => {
         title: rates.isFallback ? "Using fallback rates" : "Rates updated",
         description: rates.isFallback
           ? "Live rates were unavailable or invalid; using safe defaults."
-          : `1 EUR = ${(1 / rates.krwToEur).toFixed(2)} KRW | 1 USD = ${rates.usdToEur.toFixed(4)} EUR`,
+          : `$1 = ${Math.round(rates.krwPerUsd).toLocaleString("en-US")} KRW | €1 = $${rates.usdPerEur.toFixed(4)}`,
         variant: rates.isFallback ? "destructive" : "default",
       });
     } finally {
@@ -567,11 +596,11 @@ const Calculator = () => {
   useEffect(() => {
     if (!hasMountedRef.current) return;
     const krwValid =
-      krwToEurRate >= FX_VALID_RANGES.krwToEur.min &&
-      krwToEurRate <= FX_VALID_RANGES.krwToEur.max;
+      krwPerUsdRate >= FX_VALID_RANGES.krwPerUsd.min &&
+      krwPerUsdRate <= FX_VALID_RANGES.krwPerUsd.max;
     const usdValid =
-      usdToEurRate >= FX_VALID_RANGES.usdToEur.min &&
-      usdToEurRate <= FX_VALID_RANGES.usdToEur.max;
+      usdPerEurRate >= FX_VALID_RANGES.usdPerEur.min &&
+      usdPerEurRate <= FX_VALID_RANGES.usdPerEur.max;
 
     if (krwValid && usdValid) {
       const source = fxUpdateSourceRef.current;
@@ -582,9 +611,9 @@ const Calculator = () => {
         setFxSource("manual");
       }
 
-      setLastValidRatesState({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
+      setLastValidRatesState({ krwPerUsd: krwPerUsdRate, usdPerEur: usdPerEurRate });
     }
-  }, [krwToEurRate, setLastValidRatesState, usdToEurRate]);
+  }, [krwPerUsdRate, setLastValidRatesState, usdPerEurRate]);
 
   // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;
@@ -676,16 +705,16 @@ const Calculator = () => {
             >
               <div className="flex items-center gap-3 text-xs">
                 <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">€1</span>
+                  <span className="text-muted-foreground">$1</span>
                   <span className="font-medium text-foreground">
-                    = ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    = ₩{Math.round(krwPerUsdRate).toLocaleString("en-US")}
                   </span>
                 </div>
                 <span className="text-border">|</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-muted-foreground">$1</span>
+                  <span className="text-muted-foreground">€1</span>
                   <span className="font-medium text-foreground">
-                    = €{usdToEurRate.toFixed(2)}
+                    = ${usdPerEurRate.toFixed(3)}
                   </span>
                 </div>
               </div>
@@ -734,7 +763,8 @@ const Calculator = () => {
               numberOfCars={numberOfCars}
               carPrices={carPrices}
               setCarPrices={setCarPricesTracked}
-              krwToEurRate={krwToEurRate}
+              krwPerUsdRate={krwPerUsdRate}
+              usdPerEurRate={usdPerEurRate}
               results={results}
             />
 
@@ -773,8 +803,8 @@ const Calculator = () => {
         scenario={scenario}
         customsDuty={customsDuty}
         vat={vat}
-        krwToEurRate={krwToEurRate}
-        usdToEurRate={usdToEurRate}
+        krwPerUsdRate={krwPerUsdRate}
+        usdPerEurRate={usdPerEurRate}
         containerType={containerType}
         onRecalculate={handleRecalculate}
         onScenarioChange={setScenarioTracked}
@@ -784,7 +814,7 @@ const Calculator = () => {
         <BottomSheetHeader className="flex items-center justify-between pb-3">
           <div>
             <p className="text-xs text-muted-foreground">Exchange Rates</p>
-            <h3 className="text-lg font-semibold text-foreground">KRW & USD to EUR</h3>
+            <h3 className="text-lg font-semibold text-foreground">KRW → USD & USD ↔ EUR</h3>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsRatesSheetOpen(false)}>
             <X className="w-5 h-5" />
@@ -797,17 +827,17 @@ const Calculator = () => {
               setAutoUpdateFX={setAutoUpdateFXTracked}
               isLoadingRates={isLoadingRates}
               onRefreshRates={handleFetchRates}
-              krwToEurRate={krwToEurRate}
-              setKrwToEurRate={setKrwToEurRateTracked}
-              usdToEurRate={usdToEurRate}
-              setUsdToEurRate={setUsdToEurRateTracked}
+              krwPerUsdRate={krwPerUsdRate}
+              setKrwPerUsdRate={setKrwPerUsdRateTracked}
+              usdPerEurRate={usdPerEurRate}
+              setUsdPerEurRate={setUsdPerEurRateTracked}
               lastUpdatedAt={lastUpdatedAt}
               lastValidRates={lastValidRates}
               onRevertToLastValid={() => {
                 if (lastValidRates) {
                   fxUpdateSourceRef.current = "restored";
-                  setKrwToEurRateTracked(lastValidRates.krwToEur);
-                  setUsdToEurRateTracked(lastValidRates.usdToEur);
+                  setKrwPerUsdRateTracked(lastValidRates.krwPerUsd);
+                  setUsdPerEurRateTracked(lastValidRates.usdPerEur);
                 }
               }}
             />

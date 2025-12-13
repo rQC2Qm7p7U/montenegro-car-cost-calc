@@ -1,8 +1,8 @@
 export interface CalculatorState {
   carPrices: number[]; // Array of car prices in EUR
   useKRW: boolean;
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   autoUpdateFX: boolean;
   isLoadingRates: boolean;
   customsDuty: number;

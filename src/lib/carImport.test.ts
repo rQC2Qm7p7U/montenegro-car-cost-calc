@@ -90,7 +90,7 @@ describe("calculateCarImport", () => {
 
 describe("currency conversion helpers", () => {
   it("converts KRW to EUR with provided rate", () => {
-    const eur = convertKRWToEUR(1_000_000, 0.001);
+    const eur = convertKRWToEUR(1_000_000, 1000, 1);
     expect(eur).toBe(1000);
   });
 });

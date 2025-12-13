@@ -14,7 +14,8 @@ interface CarPricesSectionProps {
   numberOfCars: number;
   carPrices: number[];
   setCarPrices: (value: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => void;
-  krwToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   results: CalculationResults;
 }
 
@@ -26,15 +27,20 @@ const clampNonNegative = (value: number) =>
 const formatEuroInput = (value: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
 
-const computeEurFromKrwInput = (input: string, rate: number, raw: boolean) => {
+const computeEurFromKrwInput = (
+  input: string,
+  krwPerUsdRate: number,
+  usdPerEurRate: number,
+  raw: boolean,
+) => {
   const parsedKRW = parseKRWInput(input);
   const actualKRW = raw ? parsedKRW : parsedKRW * 10000;
-  return clampNonNegative(convertKRWToEUR(actualKRW, rate));
+  return clampNonNegative(convertKRWToEUR(actualKRW, krwPerUsdRate, usdPerEurRate));
 };
 
-const formatKrwFromEur = (eur: number, rate: number, raw: boolean) => {
-  if (!eur || !Number.isFinite(rate) || rate <= 0) return "";
-  const krw = eur / rate;
+const formatKrwFromEur = (eur: number, krwPerUsdRate: number, usdPerEurRate: number, raw: boolean) => {
+  if (!eur || !Number.isFinite(krwPerUsdRate) || krwPerUsdRate <= 0 || usdPerEurRate <= 0) return "";
+  const krw = eur * usdPerEurRate * krwPerUsdRate;
   const display = raw ? krw : krw / 10000;
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(display);
 };
@@ -43,7 +49,8 @@ export const CarPricesSection = ({
   numberOfCars,
   carPrices,
   setCarPrices,
-  krwToEurRate,
+  krwPerUsdRate,
+  usdPerEurRate,
   results,
 }: CarPricesSectionProps) => {
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("eur");
@@ -51,7 +58,8 @@ export const CarPricesSection = ({
   const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
   const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
   const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout> | undefined>>({});
-  const prevKrwRateRef = useRef(krwToEurRate);
+  const prevKrwRateRef = useRef(krwPerUsdRate);
+  const prevUsdRateRef = useRef(usdPerEurRate);
   const prevRawModeRef = useRef(rawKRWMode);
 
   const updateCarPriceDebounced = (index: number, value: number) => {
@@ -90,7 +98,7 @@ export const CarPricesSection = ({
       return next;
     });
 
-    const eurValue = computeEurFromKrwInput(cleaned, krwToEurRate, rawKRWMode);
+    const eurValue = computeEurFromKrwInput(cleaned, krwPerUsdRate, usdPerEurRate, rawKRWMode);
     updateCarPriceDebounced(index, eurValue);
     setEurInputValues((prev) => {
       const next = [...prev];
@@ -103,11 +111,11 @@ export const CarPricesSection = ({
     if (currencyMode === "krw") {
       const baseKrwString = krwInputValues[0] ?? "";
       const eurFromKrw = baseKrwString
-        ? computeEurFromKrwInput(baseKrwString, krwToEurRate, rawKRWMode)
+        ? computeEurFromKrwInput(baseKrwString, krwPerUsdRate, usdPerEurRate, rawKRWMode)
         : clampNonNegative(carPrices[0] ?? 0);
       const eurDisplay = eurFromKrw ? formatEuroInput(eurFromKrw) : "";
       const krwDisplay =
-        baseKrwString || formatKrwFromEur(eurFromKrw, krwToEurRate, rawKRWMode);
+        baseKrwString || formatKrwFromEur(eurFromKrw, krwPerUsdRate, usdPerEurRate, rawKRWMode);
 
       setCarPrices(Array(numberOfCars).fill(eurFromKrw));
       setEurInputValues(Array(numberOfCars).fill(eurDisplay));
@@ -117,7 +125,7 @@ export const CarPricesSection = ({
 
     const baseEur = clampNonNegative(carPrices[0] ?? 0);
     const eurDisplay = baseEur ? formatEuroInput(baseEur) : "";
-    const krwDisplay = formatKrwFromEur(baseEur, krwToEurRate, rawKRWMode);
+    const krwDisplay = formatKrwFromEur(baseEur, krwPerUsdRate, usdPerEurRate, rawKRWMode);
 
     setCarPrices(Array(numberOfCars).fill(baseEur));
     setEurInputValues(Array(numberOfCars).fill(eurDisplay));
@@ -169,19 +177,24 @@ export const CarPricesSection = ({
     setKrwInputValues((prev) => {
       const next = [...prev];
       for (let i = 0; i < numberOfCars; i += 1) {
-        next[i] = carPrices[i] > 0 ? formatKrwFromEur(carPrices[i], krwToEurRate, rawKRWMode) : "";
+        next[i] =
+          carPrices[i] > 0
+            ? formatKrwFromEur(carPrices[i], krwPerUsdRate, usdPerEurRate, rawKRWMode)
+            : "";
       }
       return next.slice(0, numberOfCars);
     });
-  }, [carPrices, currencyMode, krwToEurRate, numberOfCars, rawKRWMode]);
+  }, [carPrices, currencyMode, krwPerUsdRate, numberOfCars, rawKRWMode, usdPerEurRate]);
 
   // Recalculate EUR prices when KRW rate or input mode changes
   useEffect(() => {
-    const rateChanged = prevKrwRateRef.current !== krwToEurRate;
+    const rateChanged = prevKrwRateRef.current !== krwPerUsdRate;
+    const usdRateChanged = prevUsdRateRef.current !== usdPerEurRate;
     const rawChanged = prevRawModeRef.current !== rawKRWMode;
-    prevKrwRateRef.current = krwToEurRate;
+    prevKrwRateRef.current = krwPerUsdRate;
+    prevUsdRateRef.current = usdPerEurRate;
     prevRawModeRef.current = rawKRWMode;
-    if (!rateChanged && !rawChanged) return;
+    if (!rateChanged && !rawChanged && !usdRateChanged) return;
     if (!krwInputValues.some(Boolean)) return;
 
     const updatedPrices = [...carPrices];
@@ -189,14 +202,14 @@ export const CarPricesSection = ({
 
     krwInputValues.forEach((value, index) => {
       if (!value) return;
-      const eurValue = computeEurFromKrwInput(value, krwToEurRate, rawKRWMode);
+      const eurValue = computeEurFromKrwInput(value, krwPerUsdRate, usdPerEurRate, rawKRWMode);
       updatedPrices[index] = eurValue;
       updatedEurInputs[index] = eurValue ? formatEuroInput(eurValue) : "";
     });
 
     setCarPrices(updatedPrices, { skipDirty: true });
     setEurInputValues(updatedEurInputs);
-  }, [carPrices, eurInputValues, krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
+  }, [carPrices, eurInputValues, krwInputValues, krwPerUsdRate, rawKRWMode, setCarPrices, usdPerEurRate]);
 
   useEffect(
     () => () => {

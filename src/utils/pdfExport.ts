@@ -7,8 +7,8 @@ interface ExportParams {
   scenario: 'physical' | 'company';
   customsDuty: number;
   vat: number;
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   containerType: '20ft' | '40ft';
 }
 
@@ -22,8 +22,8 @@ export const exportCalculationPDF = ({
   scenario,
   customsDuty,
   vat,
-  krwToEurRate,
-  usdToEurRate,
+  krwPerUsdRate,
+  usdPerEurRate,
   containerType,
 }: ExportParams): void => {
   const doc = new jsPDF();
@@ -234,7 +234,11 @@ export const exportCalculationPDF = ({
   y += 5;
   doc.text(`Container: ${containerType} | Customs: ${customsDuty}% | VAT: ${vat}% | Scenario: ${scenario}`, margin, y);
   y += 5;
-  doc.text(`Exchange Rates: 1 EUR = ${Math.round(1 / krwToEurRate).toLocaleString('de-DE')} KRW | 1 USD = ${usdToEurRate.toFixed(4)} EUR`, margin, y);
+  doc.text(
+    `Exchange Rates: $1 = ${Math.round(krwPerUsdRate).toLocaleString('de-DE')} KRW | €1 = $${usdPerEurRate.toFixed(4)}`,
+    margin,
+    y,
+  );
 
   // Save
   const fileName = `car-import-calculation-${new Date().toISOString().split('T')[0]}.pdf`;

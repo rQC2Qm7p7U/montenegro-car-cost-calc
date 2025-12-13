@@ -3,8 +3,8 @@ import type { MutableRefObject } from "react";
 
 type PersistableState = {
   carPrices: number[];
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   customsDuty: number;
   vat: number;
   translationPages: number;
@@ -29,8 +29,8 @@ export const useCalculatorPersistence = ({
 }: UseCalculatorPersistenceProps) => {
   const {
     carPrices,
-    krwToEurRate,
-    usdToEurRate,
+    krwPerUsdRate,
+    usdPerEurRate,
     customsDuty,
     vat,
     translationPages,
@@ -51,8 +51,8 @@ export const useCalculatorPersistence = ({
     const id = window.setTimeout(() => {
       const payload = {
         carPrices,
-        krwToEurRate,
-        usdToEurRate,
+        krwPerUsdRate,
+        usdPerEurRate,
         customsDuty,
         vat,
         translationPages,
@@ -68,8 +68,8 @@ export const useCalculatorPersistence = ({
 
       const params = new URLSearchParams(window.location.search);
       params.set("carPrices", carPrices.join(","));
-      params.set("krwToEurRate", String(krwToEurRate));
-      params.set("usdToEurRate", String(usdToEurRate));
+      params.set("krwPerUsdRate", String(krwPerUsdRate));
+      params.set("usdPerEurRate", String(usdPerEurRate));
       params.set("customsDuty", String(customsDuty));
       params.set("vat", String(vat));
       params.set("translationPages", String(translationPages));
@@ -93,12 +93,12 @@ export const useCalculatorPersistence = ({
     customsDuty,
     hasMountedRef,
     homologationFee,
-    krwToEurRate,
+    krwPerUsdRate,
     miscellaneous,
     numberOfCars,
     scenario,
     translationPages,
-    usdToEurRate,
+    usdPerEurRate,
     vat,
     persistKey,
   ]);

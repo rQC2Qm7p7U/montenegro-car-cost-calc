@@ -9,8 +9,8 @@ interface CalculationResultsProps {
   scenario: "physical" | "company";
   customsDuty: number;
   vat: number;
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   completionPercent?: number;
 }
 
@@ -20,8 +20,8 @@ export const CalculationResults = ({
   scenario,
   customsDuty,
   vat,
-  krwToEurRate,
-  usdToEurRate,
+  krwPerUsdRate,
+  usdPerEurRate,
   completionPercent = 0,
 }: CalculationResultsProps) => {
   const formatEUR = (value: number) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -209,9 +209,9 @@ export const CalculationResults = ({
 
       {/* Exchange rates footer */}
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
-        <span>1 EUR = {(1 / krwToEurRate).toFixed(0)} KRW</span>
+        <span>$1 = {Math.round(krwPerUsdRate).toLocaleString("en-US")} KRW</span>
         <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-        <span>1 USD = {usdToEurRate.toFixed(4)} EUR</span>
+        <span>€1 = ${usdPerEurRate.toFixed(4)}</span>
       </div>
     </div>
   );

@@ -18,28 +18,39 @@ export const parseKRWInput = (input: string): number => {
   return isNaN(num) ? 0 : num;
 };
 
-export const convertKRWToEUR = (krw: number, rate: number): number => {
-  return krw * rate;
+export const convertKRWToUSD = (krw: number, krwPerUsdRate: number): number => {
+  if (!krwPerUsdRate || krwPerUsdRate <= 0) return 0;
+  return krw / krwPerUsdRate;
 };
 
-export const convertUSDToEUR = (usd: number, rate: number): number => {
-  return usd * rate;
+export const convertUSDToEUR = (usd: number, usdPerEurRate: number): number => {
+  if (!usdPerEurRate || usdPerEurRate <= 0) return 0;
+  return usd / usdPerEurRate;
+};
+
+export const convertKRWToEUR = (
+  krw: number,
+  krwPerUsdRate: number,
+  usdPerEurRate: number,
+): number => {
+  const usd = convertKRWToUSD(krw, krwPerUsdRate);
+  return convertUSDToEUR(usd, usdPerEurRate);
 };
 
 // Fetch live exchange rates from exchangerate API
 export interface ExchangeRates {
-  krwToEur: number;
-  usdToEur: number;
+  krwPerUsd: number;
+  usdPerEur: number;
   isFallback: boolean;
   fetchedAt?: number;
 }
 
 export const FX_VALID_RANGES = {
-  krwToEur: { min: 0.0001, max: 0.005 },
-  usdToEur: { min: 0.5, max: 2 },
+  krwPerUsd: { min: 500, max: 2000 },
+  usdPerEur: { min: 0.5, max: 2 },
 } as const;
 
-const FALLBACK_RATES: ExchangeRates = { krwToEur: 0.00068, usdToEur: 0.93, isFallback: true, fetchedAt: undefined };
+const FALLBACK_RATES: ExchangeRates = { krwPerUsd: 1350, usdPerEur: 1.08, isFallback: true, fetchedAt: undefined };
 
 export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
   const controller = new AbortController();
@@ -60,17 +71,21 @@ export const fetchExchangeRates = async (): Promise<ExchangeRates> => {
       throw new Error('Missing or invalid rate fields');
     }
 
-    const krwToEur = 1 / eurToKrw;
-    const usdToEur = 1 / eurToUsd;
+    const krwPerUsd = eurToKrw / eurToUsd;
+    const usdPerEur = eurToUsd;
 
-    const krwInRange = krwToEur >= FX_VALID_RANGES.krwToEur.min && krwToEur <= FX_VALID_RANGES.krwToEur.max;
-    const usdInRange = usdToEur >= FX_VALID_RANGES.usdToEur.min && usdToEur <= FX_VALID_RANGES.usdToEur.max;
+    const krwInRange =
+      krwPerUsd >= FX_VALID_RANGES.krwPerUsd.min &&
+      krwPerUsd <= FX_VALID_RANGES.krwPerUsd.max;
+    const usdInRange =
+      usdPerEur >= FX_VALID_RANGES.usdPerEur.min &&
+      usdPerEur <= FX_VALID_RANGES.usdPerEur.max;
 
     if (!krwInRange || !usdInRange) {
-      throw new Error(`Rates out of expected range: KRW/EUR=${krwToEur}, USD/EUR=${usdToEur}`);
+      throw new Error(`Rates out of expected range: KRW/USD=${krwPerUsd}, USD/EUR=${usdPerEur}`);
     }
 
-    return { krwToEur, usdToEur, isFallback: false, fetchedAt: Date.now() };
+    return { krwPerUsd, usdPerEur, isFallback: false, fetchedAt: Date.now() };
   } catch (error) {
     console.error('Error fetching exchange rates, using fallbacks:', error);
     return { ...FALLBACK_RATES };

@@ -36,8 +36,8 @@ interface ResultsBottomSheetProps {
   scenario: "physical" | "company";
   customsDuty: number;
   vat: number;
-  krwToEurRate: number;
-  usdToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   containerType: "20ft" | "40ft";
   onRecalculate: () => void;
   onScenarioChange: (scenario: "physical" | "company") => void;
@@ -51,8 +51,8 @@ export const ResultsBottomSheet = ({
   scenario,
   customsDuty,
   vat,
-  krwToEurRate,
-  usdToEurRate,
+  krwPerUsdRate,
+  usdPerEurRate,
   containerType,
   onRecalculate,
   onScenarioChange,
@@ -75,6 +75,7 @@ export const ResultsBottomSheet = ({
   const physicalTotal = results.totalFinalCost;
   const companyNet = results.totalFinalCost - results.totalVAT;
   const vatRefundTotal = results.totalVAT;
+  const eurPerUsdRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
 
   const handleExportPDF = () => {
     try {
@@ -84,8 +85,8 @@ export const ResultsBottomSheet = ({
         scenario,
         customsDuty,
         vat,
-        krwToEurRate,
-        usdToEurRate,
+        krwPerUsdRate,
+        usdPerEurRate,
         containerType,
       });
       toast({
@@ -392,7 +393,7 @@ export const ResultsBottomSheet = ({
                           key: "freight",
                           label: "Freight",
                           value: car.freightPerCar,
-                          tip: `(${containerInfo.freightUSD} USD × ${usdToEurRate.toFixed(4)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
+                          tip: `(${containerInfo.freightUSD} USD × ${eurPerUsdRate.toFixed(4)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
                         },
                         {
                           key: "customs",
@@ -513,8 +514,8 @@ export const ResultsBottomSheet = ({
               <Separator className="my-2" />
               
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-                <span>1 EUR = {Math.round(1 / krwToEurRate).toLocaleString('de-DE')} KRW</span>
-                <span>1 USD = {usdToEurRate.toFixed(4)} EUR</span>
+                <span>$1 = {Math.round(krwPerUsdRate).toLocaleString('de-DE')} KRW</span>
+                <span>€1 = ${usdPerEurRate.toFixed(4)}</span>
               </div>
             </Card>
           </section>

@@ -9,16 +9,17 @@ import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/cu
 interface KRWInputProps {
   value: string;
   onChange: (value: string) => void;
-  krwToEurRate: number;
+  krwPerUsdRate: number;
+  usdPerEurRate: number;
   disabled?: boolean;
 }
 
-const KRWInput = ({ value, onChange, krwToEurRate, disabled }: KRWInputProps) => {
+const KRWInput = ({ value, onChange, krwPerUsdRate, usdPerEurRate, disabled }: KRWInputProps) => {
   const [rawKRWMode, setRawKRWMode] = useState(false);
   
   const parsedInput = parseKRWInput(value);
   const actualKRW = rawKRWMode ? parsedInput : parsedInput * 10000;
-  const eurValue = convertKRWToEUR(actualKRW, krwToEurRate);
+  const eurValue = convertKRWToEUR(actualKRW, krwPerUsdRate, usdPerEurRate);
 
   return (
     <div className="space-y-2">
@@ -69,7 +70,7 @@ const KRWInput = ({ value, onChange, krwToEurRate, disabled }: KRWInputProps) =>
       {parsedInput > 0 && (
         <div className="text-xs text-muted-foreground space-y-0.5">
           <div>{formatKRW(actualKRW)} KRW</div>
-          <div className="text-primary font-medium">≈ €{formatEUR(eurValue)} at rate {krwToEurRate.toFixed(6)}</div>
+          <div className="text-primary font-medium">≈ €{formatEUR(eurValue)} at rate ₩{Math.round(krwPerUsdRate).toLocaleString("en-US")} / $</div>
         </div>
       )}
     </div>

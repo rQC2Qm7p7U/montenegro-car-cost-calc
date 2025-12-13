@@ -11,12 +11,12 @@ interface CurrencyRatesSectionProps {
   setAutoUpdateFX: (value: boolean) => void;
   isLoadingRates: boolean;
   onRefreshRates: () => void;
-  krwToEurRate: number;
-  setKrwToEurRate: (value: number) => void;
-  usdToEurRate: number;
-  setUsdToEurRate: (value: number) => void;
+  krwPerUsdRate: number;
+  setKrwPerUsdRate: (value: number) => void;
+  usdPerEurRate: number;
+  setUsdPerEurRate: (value: number) => void;
   lastUpdatedAt: number | null;
-  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  lastValidRates: { krwPerUsd: number; usdPerEur: number } | null;
   onRevertToLastValid: () => void;
 }
 
@@ -25,21 +25,21 @@ export const CurrencyRatesSection = ({
   setAutoUpdateFX,
   isLoadingRates,
   onRefreshRates,
-  krwToEurRate,
-  setKrwToEurRate,
-  usdToEurRate,
-  setUsdToEurRate,
+  krwPerUsdRate,
+  setKrwPerUsdRate,
+  usdPerEurRate,
+  setUsdPerEurRate,
   lastUpdatedAt,
   lastValidRates,
   onRevertToLastValid,
 }: CurrencyRatesSectionProps) => {
-  const KRW_RANGE = { min: 0.0001, max: 0.005 };
+  const KRW_RANGE = { min: 500, max: 2000 };
   const USD_RANGE = { min: 0.5, max: 2 };
   const [editKrw, setEditKrw] = useState(false);
   const [editUsd, setEditUsd] = useState(false);
 
-  const krwInvalid = krwToEurRate < KRW_RANGE.min || krwToEurRate > KRW_RANGE.max;
-  const usdInvalid = usdToEurRate < USD_RANGE.min || usdToEurRate > USD_RANGE.max;
+  const krwInvalid = krwPerUsdRate < KRW_RANGE.min || krwPerUsdRate > KRW_RANGE.max;
+  const usdInvalid = usdPerEurRate < USD_RANGE.min || usdPerEurRate > USD_RANGE.max;
 
   const safeNumber = (value: string) => {
     const num = Number(value.replace(",", "."));
@@ -89,18 +89,18 @@ export const CurrencyRatesSection = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-          <Label className="text-[11px] text-muted-foreground block mb-1">KRW → EUR</Label>
+          <Label className="text-[11px] text-muted-foreground block mb-1">KRW → USD</Label>
           {editKrw ? (
             <Input
               autoFocus
-              id="krwToEur"
+              id="krwPerUsd"
               type="number"
-              step="0.000001"
-              value={krwToEurRate}
+              step="1"
+              value={krwPerUsdRate}
               min={KRW_RANGE.min}
               max={KRW_RANGE.max}
               onChange={(e) =>
-                setKrwToEurRate(clamp(safeNumber(e.target.value), KRW_RANGE.min, KRW_RANGE.max))
+                setKrwPerUsdRate(clamp(safeNumber(e.target.value), KRW_RANGE.min, KRW_RANGE.max))
               }
               onBlur={() => setEditKrw(false)}
               className={`input-focus-ring bg-background/50 h-9 text-sm ${
@@ -113,8 +113,8 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditKrw(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
-              <span className="text-muted-foreground text-[11px] ml-2">per €</span>
+              <span className="font-semibold">₩{Math.round(krwPerUsdRate).toLocaleString("en-US")}</span>
+              <span className="text-muted-foreground text-[11px] ml-2">per $</span>
             </button>
           )}
           {krwInvalid && (
@@ -125,18 +125,18 @@ export const CurrencyRatesSection = ({
         </div>
 
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-          <Label className="text-[11px] text-muted-foreground block mb-1">USD → EUR</Label>
+          <Label className="text-[11px] text-muted-foreground block mb-1">EUR → USD</Label>
           {editUsd ? (
             <Input
               autoFocus
-              id="usdToEur"
+              id="usdPerEur"
               type="number"
               step="0.0001"
-              value={usdToEurRate}
+              value={usdPerEurRate}
               min={USD_RANGE.min}
               max={USD_RANGE.max}
               onChange={(e) =>
-                setUsdToEurRate(clamp(safeNumber(e.target.value), USD_RANGE.min, USD_RANGE.max))
+                setUsdPerEurRate(clamp(safeNumber(e.target.value), USD_RANGE.min, USD_RANGE.max))
               }
               onBlur={() => setEditUsd(false)}
               className={`input-focus-ring bg-background/50 h-9 text-sm ${
@@ -149,8 +149,8 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditUsd(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">€{usdToEurRate.toFixed(4)}</span>
-              <span className="text-muted-foreground text-[11px] ml-2">per $</span>
+              <span className="font-semibold">${usdPerEurRate.toFixed(4)}</span>
+              <span className="text-muted-foreground text-[11px] ml-2">per €</span>
             </button>
           )}
           {usdInvalid && (
