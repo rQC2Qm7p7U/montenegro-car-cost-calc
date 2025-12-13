@@ -342,8 +342,8 @@ export const ResultsBottomSheet = ({
                   <div className="p-3">
                     <div className="grid grid-cols-3 gap-2 text-xs">
                       <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">CIF</p>
-                        <p className="font-semibold">€{formatEUR(car.cif)}</p>
+                        <p className="text-[10px] text-muted-foreground">Freight</p>
+                        <p className="font-semibold">€{formatEUR(car.freightPerCar)}</p>
                       </div>
                       <div className="p-2 rounded bg-muted/30 text-center">
                         <p className="text-[10px] text-muted-foreground">Customs</p>
@@ -354,16 +354,16 @@ export const ResultsBottomSheet = ({
                         <p className="font-semibold">€{formatEUR(car.vatAmount)}</p>
                       </div>
                       <div className="p-2 rounded bg-muted/30 text-center">
-                        <p className="text-[10px] text-muted-foreground">Freight</p>
-                        <p className="font-semibold">€{formatEUR(car.freightPerCar)}</p>
-                      </div>
-                      <div className="p-2 rounded bg-muted/30 text-center">
                         <p className="text-[10px] text-muted-foreground">Services</p>
                         <p className="font-semibold">€{formatEUR(car.portAgentFeePerCar + car.translationPerCar + car.speditorFee)}</p>
                       </div>
                       <div className="p-2 rounded bg-muted/30 text-center">
                         <p className="text-[10px] text-muted-foreground">Homolog.</p>
                         <p className="font-semibold">€{formatEUR(car.homologationFee)}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 text-center">
+                        <p className="text-[10px] text-muted-foreground">Misc</p>
+                        <p className="font-semibold">€{formatEUR(car.miscellaneous)}</p>
                       </div>
                     </div>
 
