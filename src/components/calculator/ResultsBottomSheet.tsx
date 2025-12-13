@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { exportCalculationPDF } from "@/utils/pdfExport";
 import { toast } from "@/hooks/use-toast";
 import type { Language } from "@/types/language";
+import { getContainerConfig } from "@/lib/carImport";
 
 interface ResultsBottomSheetProps {
   language: Language;
@@ -69,6 +70,7 @@ export const ResultsBottomSheet = ({
     formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
+  const containerInfo = getContainerConfig(containerType);
   const carsCount = Math.max(1, results.carResults.length);
   const mneExpenses = Math.max(0, results.totalFinalCost - results.totalCarPrices);
 
