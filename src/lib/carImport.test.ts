@@ -13,6 +13,7 @@ const baseParams = {
   scenario: "physical" as const,
   numberOfCars: 1,
   containerType: "40ft" as const,
+  speditorFee: 181.5,
 };
 
 describe("calculateCarImport", () => {
@@ -58,6 +59,7 @@ describe("calculateCarImport", () => {
       scenario: "physical",
       numberOfCars: 2,
       containerType: "20ft",
+      speditorFee: 181.5,
     });
 
     expect(result.freightPerContainerEUR).toBeCloseTo(3150, 3);

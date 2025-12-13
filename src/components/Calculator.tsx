@@ -648,85 +648,83 @@ const Calculator = () => {
       <div className="py-6 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
-          <header className="text-center mb-8 animate-fade-in">
-            <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="relative inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg hover:scale-105 transition-transform duration-300">
-                <Ship className="w-7 h-7 text-primary-foreground" />
+          <header className="animate-fade-in mb-6">
+            {/* Top bar with actions */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="relative inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-primary to-primary/80 rounded-xl shadow-lg hover:scale-105 transition-transform duration-300">
+                <Ship className="w-6 h-6 text-primary-foreground" />
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="h-10 gap-2" onClick={handleCopyShareLink}>
+                <Button variant="outline" size="sm" className="h-9 gap-2" onClick={handleCopyShareLink}>
                   <Share2 className="w-4 h-4" />
-                  Copy link
+                  <span className="hidden sm:inline">Copy link</span>
                 </Button>
                 <ThemeToggle />
               </div>
             </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2 tracking-tight">
-            Montenegro Car Import
-          </h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Calculate import costs for vehicles from Korea
-          </p>
+
+            {/* Title */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1 tracking-tight">
+              Montenegro Car Import
+            </h1>
+            <p className="text-sm text-muted-foreground mb-4">
+              Calculate import costs for vehicles from Korea
+            </p>
             
-            {/* Quick status badges */}
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
-              <Badge variant="outline" className="gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                {containerType} Container
+            {/* Status badges row */}
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Badge variant="outline" className="gap-1.5 text-xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                {containerType}
               </Badge>
-              <Badge variant="outline" className="gap-1.5">
+              <Badge variant="outline" className="gap-1.5 text-xs">
                 {numberOfCars} {numberOfCars === 1 ? 'Car' : 'Cars'}
               </Badge>
-              {completedCars > 0 && (
-                <Badge variant="secondary" className="gap-1.5 badge-success">
-                  {completedCars}/{numberOfCars} priced
-                </Badge>
-              )}
             </div>
 
-            {/* FX summary chips + freshness */}
-            <div className="flex flex-col items-center gap-2 mt-2">
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsRatesSheetOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
-                >
-                  <span className="text-[11px] text-muted-foreground">1€</span>
-                  ₩{(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsRatesSheetOpen(true)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-sm text-foreground hover:border-primary/50 transition-colors"
-                >
-                  <span className="text-[11px] text-muted-foreground">$1</span>
-                  €{usdToEurRate.toFixed(4)}
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-2 text-xs text-muted-foreground">
-                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted/60 border border-border/60">
-                  <Clock className="w-3 h-3" />
-                  <span className="text-[11px]">{renderFxUpdatedLabel()}</span>
-                </div>
-                {fxSource === "fallback" && (
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-700 dark:text-amber-300">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span className="text-[11px]">Using fallback rates</span>
+            {/* Rates info card */}
+            <button
+              type="button"
+              onClick={() => setIsRatesSheetOpen(true)}
+              className="w-full p-3 rounded-xl bg-card border border-border/60 hover:border-primary/40 transition-all text-left shadow-sm"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">1 EUR = </span>
+                    <span className="font-semibold text-foreground">
+                      {(1 / krwToEurRate).toLocaleString("en-US", { maximumFractionDigits: 0 })} KRW
+                    </span>
                   </div>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-3"
-                  onClick={handleFetchRates}
-                  disabled={isLoadingRates}
-                >
-                  <RefreshCcw className={`w-4 h-4 mr-1 ${isLoadingRates ? "animate-spin" : ""}`} />
-                  Retry
-                </Button>
+                  <div className="w-px h-4 bg-border" />
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">1 USD = </span>
+                    <span className="font-semibold text-foreground">
+                      {usdToEurRate.toFixed(4)} EUR
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {fxSource === "fallback" && (
+                    <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  )}
+                  <RefreshCcw 
+                    className={`w-4 h-4 text-muted-foreground ${isLoadingRates ? "animate-spin" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleFetchRates();
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>{renderFxUpdatedLabel()}</span>
+                {fxSource === "fallback" && (
+                  <span className="text-amber-600 dark:text-amber-400">• Fallback rates</span>
+                )}
+              </div>
+            </button>
           </header>
 
           {/* Input Form - Single column layout */}
