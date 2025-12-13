@@ -745,9 +745,9 @@ const Calculator = () => {
       <Button
         onClick={handleCalculate}
         disabled={!allPricesFilled}
-        className={`
-          fixed bottom-6 right-6 z-40
-          h-16 px-6 rounded-full
+        className="
+          fixed bottom-6 left-1/2 -translate-x-1/2 z-40
+          h-14 min-w-[200px] sm:min-w-[280px] px-8 rounded-full
           shadow-2xl shadow-primary/30
           bg-gradient-to-r from-primary to-primary/80
           hover:from-primary/90 hover:to-primary/70
@@ -756,14 +756,13 @@ const Calculator = () => {
           active:scale-95
           transition-all duration-300 ease-out
           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-          flex items-center gap-3
+          flex items-center justify-center gap-3
           text-primary-foreground font-semibold text-base
-          ${allPricesFilled ? 'animate-pulse hover:animate-none' : ''}
-        `}
+        "
       >
-        <CalcIcon className="w-6 h-6" />
-        <span className="hidden sm:inline">
-          {allPricesFilled ? 'Calculate' : `${numberOfCars - completedCars} more`}
+        <CalcIcon className="w-5 h-5" />
+        <span>
+          {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
         </span>
       </Button>
 
