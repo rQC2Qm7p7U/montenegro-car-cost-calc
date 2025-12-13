@@ -42,6 +42,19 @@ export const CurrencyRatesSection = ({
     return num > 0 ? num : 0;
   };
 
+  const formatKrwPerUsd = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    return `₩${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)}`;
+  };
+
+  const formatUsdPerEur = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return "—";
+    return `$${value.toLocaleString("en-US", {
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    })}`;
+  };
+
   const updatedLabel = lastUpdatedAt
     ? new Date(lastUpdatedAt).toLocaleString()
     : "No data";
@@ -93,7 +106,8 @@ export const CurrencyRatesSection = ({
               value={krwPerUsdRate}
               onChange={(e) => setKrwPerUsdRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditKrw(false)}
-              className="input-focus-ring bg-background/50 h-9 text-sm"
+              placeholder="1350"
+              className="input-focus-ring bg-background/50 h-10 text-sm"
             />
           ) : (
             <button
@@ -101,10 +115,10 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditKrw(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">
-                {krwPerUsdRate > 0 ? `₩${Math.round(krwPerUsdRate).toLocaleString("en-US")}` : "—"}
-              </span>
-              <span className="text-muted-foreground text-[11px] ml-2">per $</span>
+              <div className="flex items-center justify-between w-full">
+                <span className="font-semibold text-foreground">{formatKrwPerUsd(krwPerUsdRate)}</span>
+                <span className="text-muted-foreground text-[11px] ml-2">per $1</span>
+              </div>
             </button>
           )}
         </div>
@@ -121,7 +135,8 @@ export const CurrencyRatesSection = ({
               value={usdPerEurRate}
               onChange={(e) => setUsdPerEurRate(toPositiveNumber(e.target.value))}
               onBlur={() => setEditUsd(false)}
-              className="input-focus-ring bg-background/50 h-9 text-sm"
+              placeholder="1.0700"
+              className="input-focus-ring bg-background/50 h-10 text-sm"
             />
           ) : (
             <button
@@ -129,10 +144,10 @@ export const CurrencyRatesSection = ({
               onClick={() => setEditUsd(true)}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
-              <span className="font-semibold">
-                {usdPerEurRate > 0 ? `$${usdPerEurRate.toFixed(4)}` : "—"}
-              </span>
-              <span className="text-muted-foreground text-[11px] ml-2">per €</span>
+              <div className="flex items-center justify-between w-full">
+                <span className="font-semibold text-foreground">{formatUsdPerEur(usdPerEurRate)}</span>
+                <span className="text-muted-foreground text-[11px] ml-2">per €1</span>
+              </div>
             </button>
           )}
         </div>

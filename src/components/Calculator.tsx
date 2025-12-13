@@ -714,7 +714,10 @@ const Calculator = () => {
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">€1</span>
                   <span className="font-medium text-foreground">
-                    = ${usdPerEurRate.toFixed(3)}
+                    = ${usdPerEurRate.toLocaleString("en-US", {
+                      minimumFractionDigits: 4,
+                      maximumFractionDigits: 4,
+                    })}
                   </span>
                 </div>
               </div>

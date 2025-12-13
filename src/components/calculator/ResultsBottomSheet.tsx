@@ -76,6 +76,18 @@ export const ResultsBottomSheet = ({
   const companyNet = results.totalFinalCost - results.totalVAT;
   const vatRefundTotal = results.totalVAT;
   const eurPerUsdRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
+  const formatKrwPerUsd = (value: number) =>
+    value > 0
+      ? `₩${Math.round(value).toLocaleString("en-US")}`
+      : "—";
+  const formatUsdPerEur = (value: number) =>
+    value > 0
+      ? `$${value.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+      : "—";
+  const formatEurPerUsd = (value: number) =>
+    value > 0
+      ? `€${value.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+      : "—";
 
   const handleExportPDF = () => {
     try {
@@ -393,7 +405,7 @@ export const ResultsBottomSheet = ({
                           key: "freight",
                           label: "Freight",
                           value: car.freightPerCar,
-                          tip: `(${containerInfo.freightUSD} USD × ${eurPerUsdRate.toFixed(4)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
+                          tip: `(${containerInfo.freightUSD} USD × ${formatEurPerUsd(eurPerUsdRate)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
                         },
                         {
                           key: "customs",
@@ -514,8 +526,8 @@ export const ResultsBottomSheet = ({
               <Separator className="my-2" />
               
               <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] text-muted-foreground">
-                <span>$1 = {Math.round(krwPerUsdRate).toLocaleString('de-DE')} KRW</span>
-                <span>€1 = ${usdPerEurRate.toFixed(4)}</span>
+                <span>$1 = {formatKrwPerUsd(krwPerUsdRate)} KRW</span>
+                <span>€1 = {formatUsdPerEur(usdPerEurRate)}</span>
               </div>
             </Card>
           </section>
