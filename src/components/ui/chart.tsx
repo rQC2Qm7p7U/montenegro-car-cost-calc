@@ -6,6 +6,20 @@ import { cn } from "@/lib/utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+const cssEscape =
+  typeof CSS !== "undefined" && typeof CSS.escape === "function"
+    ? CSS.escape
+    : (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+const isSafeColor = (value: string | undefined) => {
+  if (!value) return false;
+  // Allow common safe patterns: hex, rgb/rgba/hsl/hsla, var().
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6,8})$/.test(value)
+    || /^rgba?\([\d\s.,%+-]+\)$/i.test(value)
+    || /^hsla?\([\d\s.,%+-]+\)$/i.test(value)
+    || /^var\(--[a-zA-Z0-9_-]+\)$/.test(value);
+};
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -59,7 +73,21 @@ const ChartContainer = React.forwardRef<
 ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
-  const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
+  const colorConfig = Object.entries(config)
+    .map(([key, item]) => {
+      const safeKey = cssEscape(key);
+      const safeColor = isSafeColor(item.color) ? item.color : undefined;
+      const safeTheme =
+        item.theme &&
+        Object.fromEntries(
+          Object.entries(item.theme).map(([themeKey, themeColor]) => [
+            themeKey,
+            isSafeColor(themeColor) ? themeColor : undefined,
+          ]),
+        );
+      return { key: safeKey, color: safeColor, theme: safeTheme };
+    })
+    .filter((entry) => entry.theme || entry.color);
 
   if (!colorConfig.length) {
     return null;
@@ -71,12 +99,13 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${cssEscape(id)}] {
 ${colorConfig
-  .map(([key, itemConfig]) => {
+  .map((itemConfig) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    return color ? `  --color-${itemConfig.key}: ${color};` : null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,

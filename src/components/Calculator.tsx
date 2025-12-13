@@ -46,7 +46,9 @@ const DEFAULTS = {
 
 const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
   containerType === "20ft" ? 2 : 4;
-const SPEDITOR_FEE = 150 * 1.21;
+const SPEDITOR_BASE_FEE = 150;
+const SPEDITOR_VAT_RATE = 0.21;
+const SPEDITOR_FEE = SPEDITOR_BASE_FEE * (1 + SPEDITOR_VAT_RATE);
 const clampToRange = (
   value: number,
   range: { min: number; max: number },
@@ -182,9 +184,26 @@ type InitialState = {
 };
 
 const readInitialState = (): InitialState => {
+  if (typeof window === "undefined") {
+    return {
+      carPrices: [0],
+      krwPerUsdRate: 1350,
+      usdPerEurRate: 1.08,
+      customsDuty: DEFAULTS.customsDuty,
+      vat: DEFAULTS.vat,
+      translationPages: DEFAULTS.translationPages,
+      homologationFee: DEFAULTS.homologationFee,
+      miscellaneous: DEFAULTS.miscellaneous,
+      scenario: "physical",
+      numberOfCars: 1,
+      containerType: "40ft",
+      autoUpdateFX: false,
+      lastValidRates: null,
+      lastUpdatedAt: null,
+    };
+  }
+
   try {
-    const hashParams = window.location.hash ? window.location.hash.replace(/^#/, "") : "";
-    const params = new URLSearchParams(hashParams || window.location.search);
     const storedRaw = localStorage.getItem(PERSIST_KEY);
     const stored: Record<string, unknown> = storedRaw ? JSON.parse(storedRaw) : {};
     const storedFX = localStorage.getItem(FX_LAST_SUCCESS_KEY);
@@ -209,9 +228,7 @@ const readInitialState = (): InitialState => {
       return [];
     };
 
-    const preferUrl = <T,>(key: string, fallbackValue: T): T => {
-      const fromUrl = params.get(key);
-      if (fromUrl !== null && fromUrl !== "") return fromUrl as unknown as T;
+    const preferStored = <T,>(key: string, fallbackValue: T): T => {
       return (stored as Record<string, T | undefined>)[key] ?? fallbackValue;
     };
 
@@ -226,18 +243,18 @@ const readInitialState = (): InitialState => {
     };
 
     const merged = {
-      carPrices: preferUrl("carPrices", stored.carPrices),
-      krwPerUsdRate: preferUrl("krwPerUsdRate", stored.krwPerUsdRate),
-      usdPerEurRate: preferUrl("usdPerEurRate", stored.usdPerEurRate),
-      customsDuty: preferUrl("customsDuty", stored.customsDuty),
-      vat: preferUrl("vat", stored.vat),
-      translationPages: preferUrl("translationPages", stored.translationPages),
-      homologationFee: preferUrl("homologationFee", stored.homologationFee),
-      miscellaneous: preferUrl("miscellaneous", stored.miscellaneous),
-      scenario: preferUrl("scenario", stored.scenario),
-      numberOfCars: preferUrl("numberOfCars", stored.numberOfCars),
-      containerType: preferUrl("containerType", stored.containerType),
-      autoUpdateFX: preferUrl("autoUpdateFX", stored.autoUpdateFX),
+      carPrices: preferStored("carPrices", stored.carPrices),
+      krwPerUsdRate: preferStored("krwPerUsdRate", stored.krwPerUsdRate),
+      usdPerEurRate: preferStored("usdPerEurRate", stored.usdPerEurRate),
+      customsDuty: preferStored("customsDuty", stored.customsDuty),
+      vat: preferStored("vat", stored.vat),
+      translationPages: preferStored("translationPages", stored.translationPages),
+      homologationFee: preferStored("homologationFee", stored.homologationFee),
+      miscellaneous: preferStored("miscellaneous", stored.miscellaneous),
+      scenario: preferStored("scenario", stored.scenario),
+      numberOfCars: preferStored("numberOfCars", stored.numberOfCars),
+      containerType: preferStored("containerType", stored.containerType),
+      autoUpdateFX: preferStored("autoUpdateFX", stored.autoUpdateFX),
     };
     const resolvedContainer =
       merged.containerType === "20ft" || merged.containerType === "40ft"
@@ -294,8 +311,16 @@ const readInitialState = (): InitialState => {
         FX_VALID_RANGES.usdPerEur,
         1.08
       ),
-      customsDuty: parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
-      vat: parseNumber(merged.vat, DEFAULTS.vat),
+      customsDuty: clampToRange(
+        parseNumber(merged.customsDuty, DEFAULTS.customsDuty),
+        { min: 0, max: 30 },
+        DEFAULTS.customsDuty
+      ),
+      vat: clampToRange(
+        parseNumber(merged.vat, DEFAULTS.vat),
+        { min: 0, max: 25 },
+        DEFAULTS.vat
+      ),
       translationPages: Math.max(
         0,
         parseNumber(merged.translationPages, DEFAULTS.translationPages)
@@ -735,6 +760,7 @@ const Calculator = () => {
     numberOfCars,
     containerType,
     speditorFee: SPEDITOR_FEE,
+    speditorVatRate: SPEDITOR_VAT_RATE,
   });
 
   // Fetch exchange rates
@@ -762,13 +788,13 @@ const Calculator = () => {
         },
         { skipDirty: true }
       );
+      const fetchedAt = rates.fetchedAt || Date.now();
+      setLastUpdatedAtState(fetchedAt);
       if (!rates.isFallback) {
         setLastValidRatesState({
           krwPerUsd: rates.krwPerUsd,
           usdPerEur: rates.usdPerEur,
         });
-        const fetchedAt = rates.fetchedAt || Date.now();
-        setLastUpdatedAtState(fetchedAt);
         localStorage.setItem(
           FX_LAST_SUCCESS_KEY,
           JSON.stringify({
@@ -807,8 +833,10 @@ const Calculator = () => {
   useEffect(() => {
     if (initialRatesFetchedRef.current) return;
     initialRatesFetchedRef.current = true;
-    handleFetchRates();
-  }, [handleFetchRates]);
+    if (autoUpdateFX || !lastValidRates) {
+      handleFetchRates();
+    }
+  }, [autoUpdateFX, handleFetchRates, lastValidRates]);
 
   // Auto-update exchange rates when toggle is enabled
   useEffect(() => {
@@ -886,7 +914,7 @@ const Calculator = () => {
   };
 
   const handleCopyShareLink = async () => {
-    const url = window.location.href;
+    const url = `${window.location.origin}${window.location.pathname}`;
     const activeElement = document.activeElement as HTMLElement | null;
     try {
       await navigator.clipboard.writeText(url);

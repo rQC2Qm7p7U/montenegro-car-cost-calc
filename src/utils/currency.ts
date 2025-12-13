@@ -19,10 +19,17 @@ export const formatEUR = (value: number): string => {
 };
 
 export const parseKRWInput = (input: string): number => {
-  // Remove commas and whitespace
-  const cleaned = input.replace(/[,\s]/g, '');
-  const num = parseFloat(cleaned);
-  return isNaN(num) ? 0 : num;
+  // Allow digits with a single decimal separator (comma or dot), strip spaces/other symbols.
+  const normalized = input
+    .replace(/\s+/g, "")
+    .replace(/[,]/g, ".")
+    .replace(/[^0-9.]/g, "");
+  // Prevent multiple dots from turning into NaN via parseFloat by taking first part.
+  const safe = normalized.split(".").filter(Boolean);
+  const rebuilt =
+    safe.length === 0 ? "" : [safe.shift(), safe.length ? safe.join("") : undefined].filter(Boolean).join(".");
+  const num = parseFloat(rebuilt || "0");
+  return Number.isFinite(num) && num >= 0 ? num : 0;
 };
 
 export const convertKRWToUSD = (krw: number, krwPerUsdRate: number): number => {

@@ -152,7 +152,7 @@ export const CarPricesSection = ({
   };
 
   const handleKRWChange = (index: number, value: string) => {
-    const cleaned = value.replace(/[^\d,]/g, "");
+    const cleaned = value.replace(/[^\d.,\s]/g, "");
     setKrwInputValues((prev) => {
       const next = [...prev];
       next[index] = cleaned;

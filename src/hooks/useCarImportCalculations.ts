@@ -14,6 +14,7 @@ interface UseCarImportCalculationsProps {
   numberOfCars: number;
   containerType: "20ft" | "40ft";
   speditorFee: number;
+  speditorVatRate: number;
 }
 
 export const useCarImportCalculations = (
@@ -31,6 +32,7 @@ export const useCarImportCalculations = (
     usdToEurRate,
     vat,
     speditorFee,
+    speditorVatRate,
   } = props;
 
   return useMemo(
@@ -47,6 +49,7 @@ export const useCarImportCalculations = (
         usdToEurRate,
         vat,
         speditorFee,
+        speditorVatRate,
       }),
     [
       carPrices,
@@ -60,6 +63,7 @@ export const useCarImportCalculations = (
       usdToEurRate,
       vat,
       speditorFee,
+      speditorVatRate,
     ],
   );
 };

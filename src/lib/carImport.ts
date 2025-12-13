@@ -20,6 +20,7 @@ export interface CarImportParams {
   numberOfCars: number;
   containerType: ContainerType;
   speditorFee: number;
+  speditorVatRate?: number;
 }
 
 export const getContainerConfig = (type: ContainerType): ContainerConfig =>
@@ -40,6 +41,7 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
   numberOfCars,
   containerType,
   speditorFee,
+  speditorVatRate = 0.21,
 } = params;
 
   const containerConfig = getContainerConfig(containerType);
@@ -49,6 +51,9 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
   const freightPerCar = freightPerContainerEUR / carsCount;
   const portAgentFeePerCar = containerConfig.localEUR / carsCount + 250;
   const translationPerCar = translationPages * 35;
+  const speditorNet =
+    speditorVatRate > 0 ? speditorFee / (1 + speditorVatRate) : speditorFee;
+  const speditorVatPortion = Math.max(0, speditorFee - speditorNet);
   const carResults: CarCalculationResult[] = [];
 
   for (let i = 0; i < carsCount; i += 1) {
@@ -66,7 +71,8 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
       portAgentFeePerCar +
       miscellaneous;
     const finalCost = carPrice + totalCostWithoutCar;
-    const vatRefund = scenario === "company" ? vatAmount : 0;
+    const vatRefund =
+      scenario === "company" ? vatAmount + speditorVatPortion : 0;
     const netCostForCompany =
       scenario === "company" ? finalCost - vatRefund : finalCost;
 

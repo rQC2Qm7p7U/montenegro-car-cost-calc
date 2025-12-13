@@ -69,33 +69,6 @@ export const useCalculatorPersistence = ({
       } catch (error) {
         console.warn("Failed to persist calculator state", error);
       }
-
-      // Persist into URL hash (not sent in Referer) to avoid leaking data to external requests.
-      try {
-        const params = new URLSearchParams();
-        params.set("carPrices", carPrices.join(","));
-        params.set("krwPerUsdRate", String(krwPerUsdRate));
-        params.set("usdPerEurRate", String(usdPerEurRate));
-        params.set("customsDuty", String(customsDuty));
-        params.set("vat", String(vat));
-        params.set("translationPages", String(translationPages));
-        params.set("homologationFee", String(homologationFee));
-        params.set("miscellaneous", String(miscellaneous));
-        params.set("scenario", scenario);
-        params.set("numberOfCars", String(numberOfCars));
-        params.set("containerType", containerType);
-        params.set("autoUpdateFX", String(autoUpdateFX));
-
-        const hash = params.toString();
-        // Guard against excessively long URLs to avoid history bloat.
-        const safeHash = hash.length > 1800 ? "" : hash;
-        const newUrl = safeHash
-          ? `${window.location.pathname}#${safeHash}`
-          : window.location.pathname;
-        window.history.replaceState({}, "", newUrl);
-      } catch (error) {
-        console.warn("Failed to persist calculator URL hash", error);
-      }
     }, 400);
 
     return () => window.clearTimeout(id);
