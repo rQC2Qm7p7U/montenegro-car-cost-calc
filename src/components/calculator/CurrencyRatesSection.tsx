@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,9 @@ export const CurrencyRatesSection = ({
 }: CurrencyRatesSectionProps) => {
   const [editKrw, setEditKrw] = useState(false);
   const [editUsd, setEditUsd] = useState(false);
+  const [usdPerEurInput, setUsdPerEurInput] = useState(() =>
+    Number.isFinite(usdPerEurRate) && usdPerEurRate > 0 ? usdPerEurRate.toFixed(4).replace(".", ",") : "",
+  );
 
   const toPositiveNumber = (value: string) => {
     const num = Number(value.replace(",", "."));
@@ -62,6 +65,36 @@ export const CurrencyRatesSection = ({
   const updatedLabel = lastUpdatedAt
     ? new Date(lastUpdatedAt).toLocaleString()
     : "No data";
+
+  const normalizeUsdInput = (value: string) => {
+    const withComma = value.replace(/\./g, ",");
+    const hadComma = withComma.includes(",");
+    const [integer, ...rest] = withComma.split(",");
+    const normalizedInteger = integer.replace(/[^\d]/g, "");
+    const normalizedDecimal = rest.join("").replace(/[^\d]/g, "");
+    if (!normalizedInteger && !normalizedDecimal) return hadComma ? "0," : "";
+    const intPart = normalizedInteger || "0";
+    if (normalizedDecimal) {
+      return `${intPart},${normalizedDecimal}`;
+    }
+    return hadComma ? `${intPart},` : intPart;
+  };
+
+  const handleUsdRateChange = (value: string) => {
+    const normalized = normalizeUsdInput(value);
+    setUsdPerEurInput(normalized);
+    const parsed = Number(normalized.replace(",", "."));
+    setUsdPerEurRate(Number.isFinite(parsed) && parsed > 0 ? parsed : 0);
+  };
+
+  useEffect(() => {
+    if (editUsd) return;
+    setUsdPerEurInput(
+      Number.isFinite(usdPerEurRate) && usdPerEurRate > 0
+        ? usdPerEurRate.toFixed(4).replace(".", ",")
+        : "",
+    );
+  }, [editUsd, usdPerEurRate]);
 
   return (
     <Card className="p-3 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card">
@@ -129,7 +162,7 @@ export const CurrencyRatesSection = ({
         </div>
 
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-          <Label className="text-[11px] text-muted-foreground block mb-1">EUR → USD</Label>
+          <Label className="text-[11px] text-muted-foreground block mb-1">USD → EUR</Label>
           {editUsd ? (
             <Input
               autoFocus
@@ -137,8 +170,8 @@ export const CurrencyRatesSection = ({
               type="text"
               inputMode="decimal"
               pattern="[0-9]*[.,]?[0-9]*"
-              value={usdPerEurRate}
-              onChange={(e) => setUsdPerEurRate(toPositiveNumber(e.target.value))}
+              value={usdPerEurInput}
+              onChange={(e) => handleUsdRateChange(e.target.value)}
               onBlur={() => setEditUsd(false)}
               onFocus={(e) => e.target.select()}
               placeholder="1,0700"
@@ -147,7 +180,14 @@ export const CurrencyRatesSection = ({
           ) : (
             <button
               type="button"
-              onClick={() => setEditUsd(true)}
+              onClick={() => {
+                setUsdPerEurInput(
+                  Number.isFinite(usdPerEurRate) && usdPerEurRate > 0
+                    ? usdPerEurRate.toFixed(4).replace(".", ",")
+                    : "",
+                );
+                setEditUsd(true);
+              }}
               className="w-full h-10 px-3 rounded-md border border-border/60 bg-background/60 text-left text-sm hover:border-primary/40 transition-colors"
             >
               <div className="flex items-center justify-between w-full">
