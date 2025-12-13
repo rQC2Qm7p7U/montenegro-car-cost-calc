@@ -741,25 +741,31 @@ const Calculator = () => {
         </div>
       </div>
 
-      {/* Sticky Calculate Button Footer */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border/50 z-40">
-        <div className="max-w-2xl mx-auto">
-          <Button
-            onClick={handleCalculate}
-            disabled={!allPricesFilled}
-            size="lg"
-            className="w-full sm:w-auto sm:min-w-[200px] sm:mx-auto sm:flex h-14 text-lg font-semibold gap-2 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-          >
-            <CalcIcon className="w-5 h-5" />
-            {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
-          </Button>
-          {!allPricesFilled && (
-            <p className="text-center text-xs text-muted-foreground mt-2">
-              Fill all car prices to calculate
-            </p>
-          )}
-        </div>
-      </div>
+      {/* Floating Action Button */}
+      <Button
+        onClick={handleCalculate}
+        disabled={!allPricesFilled}
+        className={`
+          fixed bottom-6 right-6 z-40
+          h-16 px-6 rounded-full
+          shadow-2xl shadow-primary/30
+          bg-gradient-to-r from-primary to-primary/80
+          hover:from-primary/90 hover:to-primary/70
+          hover:shadow-primary/40 hover:shadow-2xl
+          hover:scale-105
+          active:scale-95
+          transition-all duration-300 ease-out
+          disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+          flex items-center gap-3
+          text-primary-foreground font-semibold text-base
+          ${allPricesFilled ? 'animate-pulse hover:animate-none' : ''}
+        `}
+      >
+        <CalcIcon className="w-6 h-6" />
+        <span className="hidden sm:inline">
+          {allPricesFilled ? 'Calculate' : `${numberOfCars - completedCars} more`}
+        </span>
+      </Button>
 
       {/* Results Bottom Sheet */}
       <ResultsBottomSheet
