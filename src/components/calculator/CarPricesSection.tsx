@@ -339,7 +339,7 @@ export const CarPricesSection = ({
                     value={eurInputValues[index] ?? ""}
                     onChange={(e) => handlePriceChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder="12 345"
+                    placeholder="Например: 12 500"
                     className="input-focus-ring bg-background/50"
                   />
                   {preview && preview.carPrice > 0 && (
@@ -356,7 +356,7 @@ export const CarPricesSection = ({
                     value={krwInputValues[index] || ""}
                     onChange={(e) => handleKRWChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder={rawKRWMode ? "22 800 000" : "2 280"}
+                    placeholder={rawKRWMode ? "Например: 22 800 000" : "Например: 2 280"}
                     className="input-focus-ring bg-background/50"
                   />
                   {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (

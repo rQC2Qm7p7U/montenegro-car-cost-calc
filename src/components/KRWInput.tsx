@@ -50,7 +50,7 @@ const KRWInput = ({ value, onChange, krwPerUsdRate, usdPerEurRate, disabled }: K
           const cleaned = e.target.value.replace(/[^\d,]/g, '');
           onChange(cleaned);
         }}
-        placeholder={rawKRWMode ? "22 800 000" : "2 280"}
+        placeholder={rawKRWMode ? "Например: 22 800 000" : "Например: 2 280"}
         disabled={disabled}
         className="mt-1.5"
       />
