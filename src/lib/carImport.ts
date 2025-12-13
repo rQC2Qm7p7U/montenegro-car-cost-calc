@@ -40,8 +40,8 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
     containerType,
   } = params;
 
-  const carsCount = Math.max(1, numberOfCars);
   const containerConfig = getContainerConfig(containerType);
+  const carsCount = Math.min(containerConfig.maxCars, Math.max(1, numberOfCars));
 
   const freightPerContainerEUR = containerConfig.freightUSD * usdToEurRate;
   const freightPerCar = freightPerContainerEUR / carsCount;
@@ -52,7 +52,7 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
   const carResults: CarCalculationResult[] = [];
 
   for (let i = 0; i < carsCount; i += 1) {
-    const carPrice = carPrices[i] ?? 0;
+    const carPrice = Math.max(0, carPrices[i] ?? 0);
     const cif = carPrice + freightPerCar;
     const customs = (cif * customsDuty) / 100;
     const vatAmount = ((cif + customs) * vat) / 100;

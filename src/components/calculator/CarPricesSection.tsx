@@ -88,17 +88,15 @@ export const CarPricesSection = ({
   };
 
   const setAllToSamePrice = () => {
-    const firstPrice = carPrices[0] || 0;
-    if (firstPrice > 0) {
-      const newPrices = Array(numberOfCars).fill(firstPrice);
-      setCarPrices(newPrices);
-      if (currencyMode === "krw" && krwInputValues[0]) {
-        setKrwInputValues(Array(numberOfCars).fill(krwInputValues[0]));
-      }
-      if (currencyMode === "eur" && eurInputValues[0]) {
-        setEurInputValues(Array(numberOfCars).fill(eurInputValues[0]));
-      }
-    }
+    const firstPrice = clampNonNegative(carPrices[0] ?? 0);
+    const resolvedEurInput =
+      (eurInputValues[0] ?? "") || (firstPrice ? formatEuroInput(firstPrice) : "");
+    const resolvedKrwInput = krwInputValues[0] ?? "";
+
+    const newPrices = Array(numberOfCars).fill(firstPrice);
+    setCarPrices(newPrices);
+    setEurInputValues(Array(numberOfCars).fill(resolvedEurInput));
+    setKrwInputValues(Array(numberOfCars).fill(resolvedKrwInput));
   };
 
   const completedCount = carPrices.filter(p => p > 0).length;
@@ -167,6 +165,17 @@ export const CarPricesSection = ({
     });
   }, [krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
 
+  useEffect(
+    () => () => {
+      Object.values(debounceTimersRef.current).forEach((timer) => {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      });
+    },
+    [],
+  );
+
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card" style={{ animationDelay: "0.15s" }}>
       {/* Header with icon */}
@@ -233,7 +242,7 @@ export const CarPricesSection = ({
       )}
 
       {/* Copy button for multiple cars */}
-      {numberOfCars > 1 && carPrices[0] > 0 && (
+      {numberOfCars > 1 && (
         <Button
           variant="outline"
           size="sm"

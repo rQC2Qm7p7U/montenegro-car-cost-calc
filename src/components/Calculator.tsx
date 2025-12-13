@@ -26,6 +26,9 @@ const DEFAULTS = {
   miscellaneous: 0,
 };
 
+const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
+  containerType === "20ft" ? 2 : 4;
+
 type InitialState = {
   carPrices: number[];
   krwToEurRate: number;
@@ -85,17 +88,19 @@ const readInitialState = (): InitialState => {
     };
 
     const merged = { ...stored, ...urlState };
-    const resolvedNumberOfCars = Math.min(4, Math.max(1, parseNumber(merged.numberOfCars, 1)));
-
     const resolvedContainer =
       merged.containerType === "20ft" || merged.containerType === "40ft"
         ? merged.containerType
         : "40ft";
+    const resolvedNumberOfCars = Math.min(
+      getContainerMaxCars(resolvedContainer),
+      Math.max(1, parseNumber(merged.numberOfCars, 1)),
+    );
 
     const parsedCarPrices = parseArray(
       merged.carPrices ?? merged.carPrices === 0 ? merged.carPrices : undefined,
     )
-      .map((price) => parseNumber(price, 0))
+      .map((price) => Math.max(0, parseNumber(price, 0)))
       .slice(0, resolvedNumberOfCars);
 
     const normalizedCarPrices =
@@ -180,40 +185,61 @@ type Action =
   | { type: "setLastUpdatedAt"; value: number | null }
   | { type: "reset"; value: CalculatorState };
 
-const clampCars = (value: number) => Math.min(4, Math.max(1, value));
+const clampCars = (value: number, containerType: "20ft" | "40ft") =>
+  Math.min(getContainerMaxCars(containerType), Math.max(1, value));
 
-const ensureCarPriceLength = (prices: number[], numberOfCars: number) => {
-  const target = clampCars(numberOfCars);
-  if (prices.length < target) {
-    return [...prices, ...Array(target - prices.length).fill(0)];
+const ensureCarPriceLength = (
+  prices: number[],
+  numberOfCars: number,
+  containerType: "20ft" | "40ft",
+) => {
+  const target = clampCars(numberOfCars, containerType);
+  const sanitized = prices
+    .slice(0, target)
+    .map((price) => (!Number.isFinite(price) || price < 0 ? 0 : price));
+
+  if (sanitized.length < target) {
+    return [...sanitized, ...Array(target - sanitized.length).fill(0)];
   }
-  if (prices.length > target) {
-    return prices.slice(0, target);
-  }
-  return prices;
+  return sanitized;
 };
 
 const calculatorReducer = (state: CalculatorState, action: Action): CalculatorState => {
   switch (action.type) {
     case "setCarPrices":
-      return { ...state, carPrices: ensureCarPriceLength(action.value, state.numberOfCars) };
+      return {
+        ...state,
+        carPrices: ensureCarPriceLength(action.value, state.numberOfCars, state.containerType),
+      };
     case "updateCarPrice": {
-      const next = ensureCarPriceLength([...state.carPrices], state.numberOfCars);
-      next[action.index] = action.value;
+      const next = ensureCarPriceLength(
+        [...state.carPrices],
+        state.numberOfCars,
+        state.containerType,
+      );
+      next[action.index] = !Number.isFinite(action.value) || action.value < 0 ? 0 : action.value;
       return { ...state, carPrices: next };
     }
     case "setNumberOfCars": {
-      const nextCount = clampCars(action.value);
+      const nextCount = clampCars(action.value, state.containerType);
+      const nextPrices = ensureCarPriceLength(state.carPrices, nextCount, state.containerType);
       return {
         ...state,
         numberOfCars: nextCount,
-        carPrices: ensureCarPriceLength(state.carPrices, nextCount),
+        carPrices: nextPrices,
       };
     }
     case "setScenario":
       return { ...state, scenario: action.value };
-    case "setContainerType":
-      return { ...state, containerType: action.value };
+    case "setContainerType": {
+      const nextCount = clampCars(state.numberOfCars, action.value);
+      return {
+        ...state,
+        containerType: action.value,
+        numberOfCars: nextCount,
+        carPrices: ensureCarPriceLength(state.carPrices, nextCount, action.value),
+      };
+    }
     case "setCustomsDuty":
       return { ...state, customsDuty: action.value };
     case "setVat":

@@ -96,4 +96,32 @@ describe("useCarImportCalculations", () => {
       2,
     );
   });
+
+  it("clamps number of cars to container capacity", () => {
+    const result = runHook({
+      numberOfCars: 4,
+      containerType: "20ft",
+      carPrices: [15000, 12000, 8000, 7000],
+      usdToEurRate: 1,
+    });
+
+    expect(result.carResults).toHaveLength(2);
+    expect(result.freightPerCar).toBeCloseTo(1575); // 3150 / 2
+    expect(result.totalCarPrices).toBeCloseTo(27000);
+  });
+
+  it("normalizes negative car prices to zero", () => {
+    const result = runHook({
+      numberOfCars: 1,
+      containerType: "20ft",
+      carPrices: [-5000],
+      usdToEurRate: 1,
+    });
+
+    const [car] = result.carResults;
+    expect(car.carPrice).toBe(0);
+    expect(result.totalCarPrices).toBe(0);
+    expect(car.cif).toBeCloseTo(result.freightPerCar);
+    expect(car.finalCost).toBeCloseTo(5188.575, 3);
+  });
 });
