@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useReducer } from "react";
 import type { SetStateAction } from "react";
 import { Ship, Calculator as CalcIcon, X, Share2, RefreshCcw, AlertTriangle, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
 import { useCarImportCalculations } from "@/hooks/useCarImportCalculations";
+import { useCalculatorPersistence } from "@/hooks/useCalculatorPersistence";
 import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
 import { CarPricesSection } from "./calculator/CarPricesSection";
@@ -145,6 +146,103 @@ const readInitialState = (): InitialState => {
   };
 };
 
+type CalculatorState = {
+  carPrices: number[];
+  krwToEurRate: number;
+  usdToEurRate: number;
+  customsDuty: number;
+  vat: number;
+  translationPages: number;
+  homologationFee: number;
+  miscellaneous: number;
+  scenario: "physical" | "company";
+  numberOfCars: number;
+  containerType: "20ft" | "40ft";
+  autoUpdateFX: boolean;
+  lastValidRates: { krwToEur: number; usdToEur: number } | null;
+  lastUpdatedAt: number | null;
+};
+
+type Action =
+  | { type: "setCarPrices"; value: number[] }
+  | { type: "updateCarPrice"; index: number; value: number }
+  | { type: "setNumberOfCars"; value: number }
+  | { type: "setScenario"; value: "physical" | "company" }
+  | { type: "setContainerType"; value: "20ft" | "40ft" }
+  | { type: "setCustomsDuty"; value: number }
+  | { type: "setVat"; value: number }
+  | { type: "setTranslationPages"; value: number }
+  | { type: "setHomologationFee"; value: number }
+  | { type: "setMiscellaneous"; value: number }
+  | { type: "setAutoUpdateFX"; value: boolean }
+  | { type: "setRates"; krwToEurRate?: number; usdToEurRate?: number }
+  | { type: "setLastValidRates"; value: CalculatorState["lastValidRates"] }
+  | { type: "setLastUpdatedAt"; value: number | null }
+  | { type: "reset"; value: CalculatorState };
+
+const clampCars = (value: number) => Math.min(4, Math.max(1, value));
+
+const ensureCarPriceLength = (prices: number[], numberOfCars: number) => {
+  const target = clampCars(numberOfCars);
+  if (prices.length < target) {
+    return [...prices, ...Array(target - prices.length).fill(0)];
+  }
+  if (prices.length > target) {
+    return prices.slice(0, target);
+  }
+  return prices;
+};
+
+const calculatorReducer = (state: CalculatorState, action: Action): CalculatorState => {
+  switch (action.type) {
+    case "setCarPrices":
+      return { ...state, carPrices: ensureCarPriceLength(action.value, state.numberOfCars) };
+    case "updateCarPrice": {
+      const next = ensureCarPriceLength([...state.carPrices], state.numberOfCars);
+      next[action.index] = action.value;
+      return { ...state, carPrices: next };
+    }
+    case "setNumberOfCars": {
+      const nextCount = clampCars(action.value);
+      return {
+        ...state,
+        numberOfCars: nextCount,
+        carPrices: ensureCarPriceLength(state.carPrices, nextCount),
+      };
+    }
+    case "setScenario":
+      return { ...state, scenario: action.value };
+    case "setContainerType":
+      return { ...state, containerType: action.value };
+    case "setCustomsDuty":
+      return { ...state, customsDuty: action.value };
+    case "setVat":
+      return { ...state, vat: action.value };
+    case "setTranslationPages":
+      return { ...state, translationPages: action.value };
+    case "setHomologationFee":
+      return { ...state, homologationFee: action.value };
+    case "setMiscellaneous":
+      return { ...state, miscellaneous: action.value };
+    case "setAutoUpdateFX":
+      return { ...state, autoUpdateFX: action.value };
+    case "setRates":
+      return {
+        ...state,
+        krwToEurRate: action.krwToEurRate ?? state.krwToEurRate,
+        usdToEurRate: action.usdToEurRate ?? state.usdToEurRate,
+      };
+    case "setLastValidRates":
+      return { ...state, lastValidRates: action.value };
+    case "setLastUpdatedAt":
+      return { ...state, lastUpdatedAt: action.value };
+    case "reset":
+      return { ...action.value };
+    default:
+      return state;
+  }
+};
+
 const Calculator = () => {
   const { toast } = useToast();
   const initialStateRef = useRef<InitialState | null>(null);
@@ -161,36 +259,32 @@ const Calculator = () => {
   const formChangeRef = useRef(false);
   const initialRatesFetchedRef = useRef(false);
 
-  // Car prices (array of EUR values)
-  const [carPrices, setCarPrices] = useState<number[]>(initialState.carPrices);
-
-  // Currency rates
-  const [krwToEurRate, setKrwToEurRate] = useState<number>(initialState.krwToEurRate);
-  const [usdToEurRate, setUsdToEurRate] = useState<number>(initialState.usdToEurRate);
-  const [autoUpdateFX, setAutoUpdateFX] = useState<boolean>(initialState.autoUpdateFX);
+  const [state, dispatch] = useReducer(calculatorReducer, initialState);
+  const {
+    carPrices,
+    krwToEurRate,
+    usdToEurRate,
+    autoUpdateFX,
+    customsDuty,
+    vat,
+    translationPages,
+    homologationFee,
+    miscellaneous,
+    scenario,
+    numberOfCars,
+    containerType,
+    lastValidRates,
+    lastUpdatedAt,
+  } = state;
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(initialState.lastUpdatedAt);
-  const [lastValidRates, setLastValidRates] = useState<{ krwToEur: number; usdToEur: number } | null>(
-    initialState.lastValidRates,
-  );
   const initialFxSource: "live" | "fallback" | "manual" | "restored" =
     initialState.lastValidRates ? "restored" : "fallback";
   const [fxSource, setFxSource] = useState<"live" | "fallback" | "manual" | "restored">(initialFxSource);
   const fxUpdateSourceRef = useRef<"none" | "live" | "fallback" | "restored">(initialFxSource);
 
-  // Other costs
-  const [customsDuty, setCustomsDuty] = useState<number>(initialState.customsDuty);
-  const [vat, setVat] = useState<number>(initialState.vat);
-  const [translationPages, setTranslationPages] = useState<number>(initialState.translationPages);
-  const [homologationFee, setHomologationFee] = useState<number>(initialState.homologationFee);
-  const [miscellaneous, setMiscellaneous] = useState<number>(initialState.miscellaneous);
+  // Other costs and toggles handled in reducer above
   const [isRatesSheetOpen, setIsRatesSheetOpen] = useState(false);
   const ratesSheetTouchStart = useRef<number | null>(null);
-
-  // Other settings
-  const [scenario, setScenario] = useState<"physical" | "company">(initialState.scenario);
-  const [numberOfCars, setNumberOfCars] = useState<number>(initialState.numberOfCars);
-  const [containerType, setContainerType] = useState<"20ft" | "40ft">(initialState.containerType);
 
   const setIsResultsOpen = useCallback((open: boolean) => {
     isResultsOpenRef.current = open;
@@ -205,100 +299,107 @@ const Calculator = () => {
     }
   }, [setIsResultsOpen]);
 
+  const dispatchTracked = useCallback(
+    (action: Action, options?: { skipDirty?: boolean }) => {
+      if (!options?.skipDirty) {
+        markFormChanged();
+      }
+      dispatch(action);
+    },
+    [dispatch, markFormChanged],
+  );
+
   const setCarPricesTracked = useCallback(
     (updater: SetStateAction<number[]>) => {
-      markFormChanged();
-      setCarPrices(updater);
+      dispatchTracked({ type: "setCarPrices", value: typeof updater === "function" ? updater(carPrices) : updater });
     },
-    [markFormChanged],
+    [carPrices, dispatchTracked],
   );
 
   const setKrwToEurRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setKrwToEurRate(updater);
+      const next = typeof updater === "function" ? updater(krwToEurRate) : updater;
+      dispatchTracked({ type: "setRates", krwToEurRate: next });
     },
-    [markFormChanged],
+    [dispatchTracked, krwToEurRate],
   );
 
   const setUsdToEurRateTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setUsdToEurRate(updater);
+      const next = typeof updater === "function" ? updater(usdToEurRate) : updater;
+      dispatchTracked({ type: "setRates", usdToEurRate: next });
     },
-    [markFormChanged],
+    [dispatchTracked, usdToEurRate],
   );
 
   const setCustomsDutyTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setCustomsDuty(updater);
+      const next = typeof updater === "function" ? updater(customsDuty) : updater;
+      dispatchTracked({ type: "setCustomsDuty", value: next });
     },
-    [markFormChanged],
+    [customsDuty, dispatchTracked],
   );
 
   const setVatTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setVat(updater);
+      const next = typeof updater === "function" ? updater(vat) : updater;
+      dispatchTracked({ type: "setVat", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked, vat],
   );
 
   const setTranslationPagesTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setTranslationPages(updater);
+      const next = typeof updater === "function" ? updater(translationPages) : updater;
+      dispatchTracked({ type: "setTranslationPages", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked, translationPages],
   );
 
   const setHomologationFeeTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setHomologationFee(updater);
+      const next = typeof updater === "function" ? updater(homologationFee) : updater;
+      dispatchTracked({ type: "setHomologationFee", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked, homologationFee],
   );
 
   const setMiscellaneousTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setMiscellaneous(updater);
+      const next = typeof updater === "function" ? updater(miscellaneous) : updater;
+      dispatchTracked({ type: "setMiscellaneous", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked, miscellaneous],
   );
 
   const setScenarioTracked = useCallback(
     (next: "physical" | "company") => {
-      markFormChanged();
-      setScenario(next);
+      dispatchTracked({ type: "setScenario", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked],
   );
 
   const setNumberOfCarsTracked = useCallback(
     (updater: SetStateAction<number>) => {
-      markFormChanged();
-      setNumberOfCars(updater);
+      const next = typeof updater === "function" ? updater(numberOfCars) : updater;
+      dispatchTracked({ type: "setNumberOfCars", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked, numberOfCars],
   );
 
   const setContainerTypeTracked = useCallback(
     (next: "20ft" | "40ft") => {
-      markFormChanged();
-      setContainerType(next);
+      dispatchTracked({ type: "setContainerType", value: next });
     },
-    [markFormChanged],
+    [dispatchTracked],
   );
 
   const setAutoUpdateFXTracked = useCallback(
     (updater: SetStateAction<boolean>) => {
-      markFormChanged();
-      setAutoUpdateFX(updater);
+      const next = typeof updater === "function" ? updater(autoUpdateFX) : updater;
+      dispatchTracked({ type: "setAutoUpdateFX", value: next });
     },
-    [markFormChanged],
+    [autoUpdateFX, dispatchTracked],
   );
 
   useEffect(
@@ -308,79 +409,39 @@ const Calculator = () => {
     [],
   );
 
-  // Update carPrices array when numberOfCars changes
-  useEffect(() => {
-    setCarPrices((prev) => {
-      if (prev.length < numberOfCars) {
-        return [...prev, ...Array(numberOfCars - prev.length).fill(0)];
-      } else if (prev.length > numberOfCars) {
-        return prev.slice(0, numberOfCars);
-      }
-      return prev;
-    });
-  }, [numberOfCars]);
-
   // Persist state to localStorage and URL
-  useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true;
-      return;
-    }
+  useCalculatorPersistence({
+    persistKey: PERSIST_KEY,
+    hasMountedRef,
+    state: {
+      carPrices,
+      krwToEurRate,
+      usdToEurRate,
+      customsDuty,
+      vat,
+      translationPages,
+      homologationFee,
+      miscellaneous,
+      scenario,
+      numberOfCars,
+      containerType,
+      autoUpdateFX,
+    },
+  });
 
-    const id = window.setTimeout(() => {
-      if (!isMountedRef.current) return;
+  const setLastValidRatesState = useCallback(
+    (value: CalculatorState["lastValidRates"]) => {
+      dispatch({ type: "setLastValidRates", value });
+    },
+    [dispatch],
+  );
 
-      const payload = {
-        carPrices,
-        krwToEurRate,
-        usdToEurRate,
-        customsDuty,
-        vat,
-        translationPages,
-        homologationFee,
-        miscellaneous,
-        scenario,
-        numberOfCars,
-        containerType,
-        autoUpdateFX,
-      };
-
-      localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
-
-      const params = new URLSearchParams(window.location.search);
-      params.set("carPrices", carPrices.join(","));
-      params.set("krwToEurRate", String(krwToEurRate));
-      params.set("usdToEurRate", String(usdToEurRate));
-      params.set("customsDuty", String(customsDuty));
-      params.set("vat", String(vat));
-      params.set("translationPages", String(translationPages));
-      params.set("homologationFee", String(homologationFee));
-      params.set("miscellaneous", String(miscellaneous));
-      params.set("scenario", scenario);
-      params.set("numberOfCars", String(numberOfCars));
-      params.set("containerType", containerType);
-      params.set("autoUpdateFX", String(autoUpdateFX));
-
-      const query = params.toString();
-      const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
-      window.history.replaceState({}, "", newUrl);
-    }, 400);
-
-    return () => window.clearTimeout(id);
-  }, [
-    autoUpdateFX,
-    carPrices,
-    containerType,
-    customsDuty,
-    homologationFee,
-    krwToEurRate,
-    miscellaneous,
-    numberOfCars,
-    scenario,
-    translationPages,
-    usdToEurRate,
-    vat,
-  ]);
+  const setLastUpdatedAtState = useCallback(
+    (value: number | null) => {
+      dispatch({ type: "setLastUpdatedAt", value });
+    },
+    [dispatch],
+  );
 
   // Calculate all results using custom hook
   const results = useCarImportCalculations({
@@ -405,12 +466,14 @@ const Calculator = () => {
       const rates = await fetchExchangeRates();
       fxUpdateSourceRef.current = rates.isFallback ? "fallback" : "live";
       if (!isMountedRef.current) return;
-      setKrwToEurRate(rates.krwToEur);
-      setUsdToEurRate(rates.usdToEur);
+      dispatchTracked(
+        { type: "setRates", krwToEurRate: rates.krwToEur, usdToEurRate: rates.usdToEur },
+        { skipDirty: true },
+      );
       if (!rates.isFallback) {
-        setLastValidRates({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
+        setLastValidRatesState({ krwToEur: rates.krwToEur, usdToEur: rates.usdToEur });
         const fetchedAt = rates.fetchedAt || Date.now();
-        setLastUpdatedAt(fetchedAt);
+        setLastUpdatedAtState(fetchedAt);
         localStorage.setItem(
           FX_LAST_SUCCESS_KEY,
           JSON.stringify({
@@ -436,7 +499,7 @@ const Calculator = () => {
         setIsLoadingRates(false);
       }
     }
-  }, [toast]);
+  }, [dispatchTracked, setLastUpdatedAtState, setLastValidRatesState, toast]);
 
   // Fetch latest exchange rates on initial load
   useEffect(() => {
@@ -480,9 +543,9 @@ const Calculator = () => {
         setFxSource("manual");
       }
 
-      setLastValidRates({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
+      setLastValidRatesState({ krwToEur: krwToEurRate, usdToEur: usdToEurRate });
     }
-  }, [krwToEurRate, usdToEurRate]);
+  }, [krwToEurRate, setLastValidRatesState, usdToEurRate]);
 
   // Check if all car prices are filled
   const completedCars = carPrices.filter(p => p > 0).length;

@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,21 @@ export const CarPricesSection = ({
   const [rawKRWMode, setRawKRWMode] = useState(false);
   const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
   const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
+  const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout> | undefined>>({});
+
+  const updateCarPriceDebounced = (index: number, value: number) => {
+    const timers = debounceTimersRef.current;
+    if (timers[index]) {
+      clearTimeout(timers[index]);
+    }
+    timers[index] = setTimeout(() => {
+      setCarPrices((prev) => {
+        const next = [...prev];
+        next[index] = value;
+        return next;
+      });
+    }, 150);
+  };
 
   const handlePriceChange = (index: number, value: string) => {
     const digitsOnly = value.replace(/[^\d]/g, "");
@@ -49,11 +64,7 @@ export const CarPricesSection = ({
       return next;
     });
 
-    setCarPrices((prev) => {
-      const next = [...prev];
-      next[index] = digitsOnly === "" ? 0 : safeValue;
-      return next;
-    });
+    updateCarPriceDebounced(index, digitsOnly === "" ? 0 : safeValue);
   };
 
   const handleKRWChange = (index: number, value: string) => {
@@ -67,9 +78,7 @@ export const CarPricesSection = ({
     const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
     const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
     
-    const newPrices = [...carPrices];
-    newPrices[index] = eurValue;
-    setCarPrices(newPrices);
+    updateCarPriceDebounced(index, eurValue);
 
     setEurInputValues((prev) => {
       const next = [...prev];
