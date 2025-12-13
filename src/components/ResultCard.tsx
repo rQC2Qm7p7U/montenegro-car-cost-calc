@@ -34,7 +34,9 @@ const ResultCard = ({ label, value, description, highlight, positive }: ResultCa
           "text-2xl font-bold",
           highlight ? "text-primary" : positive ? "text-accent" : "text-foreground"
         )}>
-          {value.toFixed(2)} €
+          {value
+            .toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            .replace(/\u00A0/g, " ")} €
         </div>
       </div>
     </Card>

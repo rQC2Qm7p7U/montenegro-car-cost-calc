@@ -60,7 +60,9 @@ export const VehicleDetailsSection = ({
   const clamp = (value: number, min: number, max: number) =>
     Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
   const displayMoney = (value: number) =>
-    Math.round(value).toLocaleString("de-DE");
+    new Intl.NumberFormat("ru-RU")
+      .format(Math.round(value))
+      .replace(/\u00A0/g, " ");
   
   const containerInfo = containerType === "20ft" 
     ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }

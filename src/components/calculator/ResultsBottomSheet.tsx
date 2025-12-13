@@ -58,8 +58,11 @@ export const ResultsBottomSheet = ({
   onScenarioChange,
 }: ResultsBottomSheetProps) => {
   const [openInfoKey, setOpenInfoKey] = useState<string | null>(null);
-  const formatEUR = (value: number) => Math.round(value).toLocaleString('de-DE');
-  const formatEURWithCents = (value: number) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
+    new Intl.NumberFormat("ru-RU", options).format(value).replace(/\u00A0/g, " ");
+  const formatEUR = (value: number) => formatNumber(Math.round(value));
+  const formatEURWithCents = (value: number) =>
+    formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const carsWithPrices = results.carResults.filter(car => car.carPrice > 0);
   const containerInfo = containerType === "20ft" 
@@ -78,15 +81,15 @@ export const ResultsBottomSheet = ({
   const eurPerUsdRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
   const formatKrwPerUsd = (value: number) =>
     value > 0
-      ? `₩${Math.round(value).toLocaleString("en-US")}`
+      ? `₩${formatNumber(Math.round(value))}`
       : "—";
   const formatUsdPerEur = (value: number) =>
     value > 0
-      ? `$${value.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+      ? `$${formatNumber(value, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
       : "—";
   const formatEurPerUsd = (value: number) =>
     value > 0
-      ? `€${value.toLocaleString("en-US", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
+      ? `€${formatNumber(value, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`
       : "—";
 
   const handleExportPDF = () => {
@@ -259,7 +262,7 @@ export const ResultsBottomSheet = ({
                     <div className="min-w-0">
                       <span className="text-sm block truncate">Freight ({containerType})</span>
                       <p className="text-[10px] text-muted-foreground">
-                        ${containerInfo.freightUSD.toLocaleString('en-US')}
+                        ${formatNumber(containerInfo.freightUSD)}
                       </p>
                     </div>
                   </div>

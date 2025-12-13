@@ -13,8 +13,13 @@ interface ExportParams {
 }
 
 const formatEUR = (value: number): string => {
-  return Math.round(value).toLocaleString('de-DE');
+  return new Intl.NumberFormat('ru-RU')
+    .format(Math.round(value))
+    .replace(/\u00A0/g, ' ');
 };
+
+const formatNumber = (value: number, options?: Intl.NumberFormatOptions): string =>
+  new Intl.NumberFormat('ru-RU', options).format(value).replace(/\u00A0/g, ' ');
 
 export const exportCalculationPDF = ({
   results,
@@ -235,7 +240,7 @@ export const exportCalculationPDF = ({
   doc.text(`Container: ${containerType} | Customs: ${customsDuty}% | VAT: ${vat}% | Scenario: ${scenario}`, margin, y);
   y += 5;
   doc.text(
-    `Exchange Rates: $1 = ${Math.round(krwPerUsdRate).toLocaleString('de-DE')} KRW | €1 = $${usdPerEurRate.toFixed(4)}`,
+    `Exchange Rates: $1 = ${formatNumber(Math.round(krwPerUsdRate))} KRW | €1 = $${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`,
     margin,
     y,
   );

@@ -558,7 +558,7 @@ const Calculator = () => {
         title: rates.isFallback ? "Using fallback rates" : "Rates updated",
         description: rates.isFallback
           ? "Live rates were unavailable or invalid; using safe defaults."
-          : `$1 = ${Math.round(rates.krwPerUsd).toLocaleString("en-US")} KRW | €1 = $${rates.usdPerEur.toFixed(4)}`,
+          : `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(rates.krwPerUsd)).replace(/\u00A0/g, " ")} KRW | €1 = $${rates.usdPerEur.toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 }).replace(/\u00A0/g, " ")}`,
         variant: rates.isFallback ? "destructive" : "default",
       });
     } finally {
@@ -707,17 +707,19 @@ const Calculator = () => {
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">$1</span>
                   <span className="font-medium text-foreground">
-                    = ₩{Math.round(krwPerUsdRate).toLocaleString("en-US")}
+                    = ₩{new Intl.NumberFormat("ru-RU").format(Math.round(krwPerUsdRate)).replace(/\u00A0/g, " ")}
                   </span>
                 </div>
                 <span className="text-border">|</span>
                 <div className="flex items-center gap-1">
                   <span className="text-muted-foreground">€1</span>
                   <span className="font-medium text-foreground">
-                    = ${usdPerEurRate.toLocaleString("en-US", {
-                      minimumFractionDigits: 4,
-                      maximumFractionDigits: 4,
-                    })}
+                    = ${usdPerEurRate
+                      .toLocaleString("ru-RU", {
+                        minimumFractionDigits: 4,
+                        maximumFractionDigits: 4,
+                      })
+                      .replace(/\u00A0/g, " ")}
                   </span>
                 </div>
               </div>

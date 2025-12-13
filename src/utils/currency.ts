@@ -1,14 +1,21 @@
 // Currency utility functions
 
+const RU_LOCALE = "ru-RU";
+const normalizeSpaces = (value: string): string => value.replace(/\u00A0/g, " ");
+
+export const formatNumber = (value: number, options?: Intl.NumberFormatOptions): string => {
+  return normalizeSpaces(new Intl.NumberFormat(RU_LOCALE, options).format(value));
+};
+
 export const formatKRW = (value: number): string => {
-  return new Intl.NumberFormat('ko-KR').format(value);
+  return formatNumber(value);
 };
 
 export const formatEUR = (value: number): string => {
-  return new Intl.NumberFormat('de-DE', {
+  return formatNumber(Math.round(value), {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(Math.round(value));
+  });
 };
 
 export const parseKRWInput = (input: string): number => {

@@ -44,15 +44,19 @@ export const CurrencyRatesSection = ({
 
   const formatKrwPerUsd = (value: number) => {
     if (!Number.isFinite(value) || value <= 0) return "—";
-    return `₩${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value)}`;
+    return `₩${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
+      .format(value)
+      .replace(/\u00A0/g, " ")}`;
   };
 
   const formatUsdPerEur = (value: number) => {
     if (!Number.isFinite(value) || value <= 0) return "—";
-    return `$${value.toLocaleString("en-US", {
-      minimumFractionDigits: 4,
-      maximumFractionDigits: 4,
-    })}`;
+    return `$${value
+      .toLocaleString("ru-RU", {
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
+      })
+      .replace(/\u00A0/g, " ")}`;
   };
 
   const updatedLabel = lastUpdatedAt

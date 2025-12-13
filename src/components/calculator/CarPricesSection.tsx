@@ -25,7 +25,9 @@ const clampNonNegative = (value: number) =>
   !Number.isFinite(value) || value < 0 ? 0 : value;
 
 const formatEuroInput = (value: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
+  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
+    .format(value)
+    .replace(/\u00A0/g, " ");
 
 const computeEurFromKrwInput = (
   input: string,
@@ -42,7 +44,9 @@ const formatKrwFromEur = (eur: number, krwPerUsdRate: number, usdPerEurRate: num
   if (!eur || !Number.isFinite(krwPerUsdRate) || krwPerUsdRate <= 0 || usdPerEurRate <= 0) return "";
   const krw = eur * usdPerEurRate * krwPerUsdRate;
   const display = raw ? krw : krw / 10000;
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(display);
+  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
+    .format(display)
+    .replace(/\u00A0/g, " ");
 };
 
 export const CarPricesSection = ({

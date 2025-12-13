@@ -70,7 +70,10 @@ const KRWInput = ({ value, onChange, krwPerUsdRate, usdPerEurRate, disabled }: K
       {parsedInput > 0 && (
         <div className="text-xs text-muted-foreground space-y-0.5">
           <div>{formatKRW(actualKRW)} KRW</div>
-          <div className="text-primary font-medium">≈ €{formatEUR(eurValue)} at rate ₩{Math.round(krwPerUsdRate).toLocaleString("en-US")} / $</div>
+          <div className="text-primary font-medium">
+            ≈ €{formatEUR(eurValue)} at rate ₩
+            {new Intl.NumberFormat("ru-RU").format(Math.round(krwPerUsdRate)).replace(/\u00A0/g, " ")} / $
+          </div>
         </div>
       )}
     </div>

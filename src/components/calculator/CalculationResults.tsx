@@ -24,7 +24,10 @@ export const CalculationResults = ({
   usdPerEurRate,
   completionPercent = 0,
 }: CalculationResultsProps) => {
-  const formatEUR = (value: number) => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatEUR = (value: number) =>
+    value
+      .toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      .replace(/\u00A0/g, " ");
   const hasAnyPrice = results.carResults.some(car => car.carPrice > 0);
 
   return (
@@ -209,9 +212,16 @@ export const CalculationResults = ({
 
       {/* Exchange rates footer */}
       <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground pt-2">
-        <span>$1 = {Math.round(krwPerUsdRate).toLocaleString("en-US")} KRW</span>
+        <span>
+          $1 = {new Intl.NumberFormat("ru-RU").format(Math.round(krwPerUsdRate)).replace(/\u00A0/g, " ")} KRW
+        </span>
         <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-        <span>€1 = ${usdPerEurRate.toFixed(4)}</span>
+        <span>
+          €1 = $
+          {usdPerEurRate
+            .toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+            .replace(/\u00A0/g, " ")}
+        </span>
       </div>
     </div>
   );
