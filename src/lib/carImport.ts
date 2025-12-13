@@ -19,6 +19,7 @@ export interface CarImportParams {
   scenario: "physical" | "company";
   numberOfCars: number;
   containerType: ContainerType;
+  speditorFee: number;
 }
 
 const getContainerConfig = (type: ContainerType): ContainerConfig =>
@@ -31,14 +32,15 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
     carPrices,
     usdToEurRate,
     customsDuty,
-    vat,
-    translationPages,
-    homologationFee,
-    miscellaneous,
-    scenario,
-    numberOfCars,
-    containerType,
-  } = params;
+  vat,
+  translationPages,
+  homologationFee,
+  miscellaneous,
+  scenario,
+  numberOfCars,
+  containerType,
+  speditorFee,
+} = params;
 
   const containerConfig = getContainerConfig(containerType);
   const carsCount = Math.min(containerConfig.maxCars, Math.max(1, numberOfCars));
@@ -47,8 +49,6 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
   const freightPerCar = freightPerContainerEUR / carsCount;
   const portAgentFeePerCar = containerConfig.localEUR / carsCount + 250;
   const translationPerCar = translationPages * 35;
-  const speditorFee = 150 * 1.21;
-
   const carResults: CarCalculationResult[] = [];
 
   for (let i = 0; i < carsCount; i += 1) {

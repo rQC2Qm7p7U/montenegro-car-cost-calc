@@ -17,6 +17,7 @@ const baseProps: HookProps = {
   scenario: "physical",
   numberOfCars: 4,
   containerType: "40ft",
+  speditorFee: 150 * 1.21,
 };
 
 const runHook = (override: Partial<HookProps> = {}): CalculationResults => {
@@ -116,6 +117,7 @@ describe("useCarImportCalculations", () => {
       containerType: "20ft",
       carPrices: [-5000],
       usdToEurRate: 1,
+      speditorFee: 181.5,
     });
 
     const [car] = result.carResults;

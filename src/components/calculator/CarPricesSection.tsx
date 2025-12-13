@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import type { CalculationResults } from "@/types/calculator";
 interface CarPricesSectionProps {
   numberOfCars: number;
   carPrices: number[];
-  setCarPrices: Dispatch<SetStateAction<number[]>>;
+  setCarPrices: (value: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => void;
   krwToEurRate: number;
   results: CalculationResults;
 }
@@ -100,12 +100,26 @@ export const CarPricesSection = ({
   };
 
   const setAllToSamePrice = () => {
+    if (currencyMode === "krw") {
+      const baseKrwString = krwInputValues[0] ?? "";
+      const eurFromKrw = baseKrwString
+        ? computeEurFromKrwInput(baseKrwString, krwToEurRate, rawKRWMode)
+        : clampNonNegative(carPrices[0] ?? 0);
+      const eurDisplay = eurFromKrw ? formatEuroInput(eurFromKrw) : "";
+      const krwDisplay =
+        baseKrwString || formatKrwFromEur(eurFromKrw, krwToEurRate, rawKRWMode);
+
+      setCarPrices(Array(numberOfCars).fill(eurFromKrw));
+      setEurInputValues(Array(numberOfCars).fill(eurDisplay));
+      setKrwInputValues(Array(numberOfCars).fill(krwDisplay));
+      return;
+    }
+
     const baseEur = clampNonNegative(carPrices[0] ?? 0);
     const eurDisplay = baseEur ? formatEuroInput(baseEur) : "";
     const krwDisplay = formatKrwFromEur(baseEur, krwToEurRate, rawKRWMode);
 
-    const newPrices = Array(numberOfCars).fill(baseEur);
-    setCarPrices(newPrices);
+    setCarPrices(Array(numberOfCars).fill(baseEur));
     setEurInputValues(Array(numberOfCars).fill(eurDisplay));
     setKrwInputValues(Array(numberOfCars).fill(krwDisplay));
   };
@@ -180,7 +194,7 @@ export const CarPricesSection = ({
       updatedEurInputs[index] = eurValue ? formatEuroInput(eurValue) : "";
     });
 
-    setCarPrices(updatedPrices);
+    setCarPrices(updatedPrices, { skipDirty: true });
     setEurInputValues(updatedEurInputs);
   }, [carPrices, eurInputValues, krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
 

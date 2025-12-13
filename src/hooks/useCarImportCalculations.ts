@@ -13,6 +13,7 @@ interface UseCarImportCalculationsProps {
   scenario: "physical" | "company";
   numberOfCars: number;
   containerType: "20ft" | "40ft";
+  speditorFee: number;
 }
 
 export const useCarImportCalculations = (
@@ -29,6 +30,7 @@ export const useCarImportCalculations = (
     translationPages,
     usdToEurRate,
     vat,
+    speditorFee,
   } = props;
 
   return useMemo(
@@ -44,6 +46,7 @@ export const useCarImportCalculations = (
         translationPages,
         usdToEurRate,
         vat,
+        speditorFee,
       }),
     [
       carPrices,
@@ -56,6 +59,7 @@ export const useCarImportCalculations = (
       translationPages,
       usdToEurRate,
       vat,
+      speditorFee,
     ],
   );
 };

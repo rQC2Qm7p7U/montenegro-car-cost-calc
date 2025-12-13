@@ -28,6 +28,7 @@ const DEFAULTS = {
 
 const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
   containerType === "20ft" ? 2 : 4;
+const SPEDITOR_FEE = 150 * 1.21;
 
 type InitialState = {
   carPrices: number[];
@@ -231,7 +232,8 @@ const calculatorReducer = (state: CalculatorState, action: Action): CalculatorSt
     }
     case "setNumberOfCars": {
       const nextCount = clampCars(action.value, state.containerType);
-      const nextPrices = ensureCarPriceLength(state.carPrices, nextCount, state.containerType);
+      const base = state.carPrices.slice(0, nextCount);
+      const nextPrices = ensureCarPriceLength(base, nextCount, state.containerType);
       return {
         ...state,
         numberOfCars: nextCount,
@@ -242,11 +244,12 @@ const calculatorReducer = (state: CalculatorState, action: Action): CalculatorSt
       return { ...state, scenario: action.value };
     case "setContainerType": {
       const nextCount = clampCars(state.numberOfCars, action.value);
+      const base = state.carPrices.slice(0, nextCount);
       return {
         ...state,
         containerType: action.value,
         numberOfCars: nextCount,
-        carPrices: ensureCarPriceLength(state.carPrices, nextCount, action.value),
+        carPrices: ensureCarPriceLength(base, nextCount, action.value),
       };
     }
     case "setCustomsDuty":
@@ -345,8 +348,8 @@ const Calculator = () => {
   );
 
   const setCarPricesTracked = useCallback(
-    (updater: SetStateAction<number[]>) => {
-      dispatchTracked({ type: "setCarPricesWithUpdater", updater });
+    (updater: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => {
+      dispatchTracked({ type: "setCarPricesWithUpdater", updater }, options);
     },
     [dispatchTracked],
   );
@@ -490,6 +493,7 @@ const Calculator = () => {
     scenario,
     numberOfCars,
     containerType,
+    speditorFee: SPEDITOR_FEE,
   });
 
   // Fetch exchange rates
