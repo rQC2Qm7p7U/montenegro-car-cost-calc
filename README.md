@@ -1,73 +1,49 @@
-# Welcome to your Lovable project
+# Montenegro Car Import Cost Calculator
 
-## Project info
+An interactive web tool for logistics teams and car dealers to estimate the landed cost of importing multiple vehicles into Montenegro. The calculator models container freight, customs, VAT, translation/homologation fees, and supports both private buyers and companies with VAT refunds. Currency inputs accept EUR or KRW, exchange rates can be refreshed live, and results can be exported as a PDF for sharing with clients.
 
-**URL**: https://lovable.dev/projects/08f042ac-c238-4796-9c6e-2ed8060ef963
+## Features
+- Multi-vehicle support with container-aware limits (20ft up to 2 cars, 40ft up to 4) and per-car price inputs in EUR or KRW (with raw/₩10k modes).
+- Live FX updates for KRW/EUR and USD/EUR via exchangerate-api.com with range validation, fallback rates, and manual override plus optional auto-refresh.
+- Per-car and aggregate breakdowns: CIF, customs duty, VAT, port agent costs, translations, homologation, speditor fee, misc charges, and VAT refund scenario for companies.
+- State persistence and sharing: calculator state is stored in `localStorage` and mirrored to the URL so scenarios can be bookmarked or shared.
+- Exportable reports: generates a PDF summary of assumptions and results; results are also shown in a responsive bottom sheet with quick scenario toggles.
+- Theming and UX niceties: light/dark toggle, toast notifications, debounced inputs, and mobile-friendly layout.
 
-## How can I edit this code?
+## Tech Stack
+- React 18 + TypeScript, Vite
+- Tailwind CSS + shadcn/ui (Radix primitives)
+- TanStack Query for data fetching
+- Vitest for unit testing
 
-There are several ways of editing your application.
-
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/08f042ac-c238-4796-9c6e-2ed8060ef963) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## Getting Started
+Prerequisites: Node.js 18+ and npm installed.
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+npm install        # Install dependencies
+npm run dev        # Start the Vite dev server
 ```
 
-**Edit a file directly in GitHub**
+Open the printed local URL (typically http://localhost:5173) to use the calculator.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Available Scripts
+- `npm run dev` – run the app locally with hot reload.
+- `npm run build` – production build to `dist/`.
+- `npm run preview` – preview the production build locally.
+- `npm run lint` – lint the codebase with ESLint.
+- `npm run test` – run the Vitest suite.
 
-**Use GitHub Codespaces**
+## Domain Logic & Key Files
+- `src/lib/carImport.ts` – core cost model: freight by container type, port agent fees, CIF/customs/VAT math, per-car rollups.
+- `src/components/Calculator.tsx` – main UI state machine, FX handling, persistence, and section composition.
+- `src/components/calculator/*` – input sections (vehicle details, currency rates, car prices) and results bottom sheet with PDF export.
+- `src/hooks/useCalculatorPersistence.ts` – syncs calculator state to `localStorage` and the URL.
+- `src/utils/currency.ts` – FX fetching with sane bounds plus format/parse helpers for KRW/EUR.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Usage Notes
+1) Select container size and number of cars; enter vehicle prices in EUR or KRW.  
+2) Refresh or override exchange rates; toggle auto-update if desired.  
+3) Adjust customs duty, VAT, translation pages, homologation, and miscellaneous costs as needed.  
+4) Toggle between Physical/Company scenarios to see VAT refund impact, then export the PDF report for clients.
 
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/08f042ac-c238-4796-9c6e-2ed8060ef963) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Default assumptions (adjust in the UI or in `src/lib/carImport.ts`): freight `$3150`/`$4150` for 20ft/40ft, local port handling `€350`/`€420`, translations `€35` per page, and speditor fee `€150 + 21% VAT`.
