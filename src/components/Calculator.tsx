@@ -507,7 +507,7 @@ const Calculator = () => {
   } = state;
   const t = calculatorCopy[language];
   const controlButtonClasses =
-    "h-10 w-10 rounded-lg border border-border/60 bg-background/70 hover:border-primary/50 hover:bg-primary/5 transition-colors shadow-sm";
+    "h-10 w-10 rounded-lg border border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/10 active:scale-95 transition-colors transition-transform shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
   const initialFxSource: "live" | "fallback" | "manual" | "restored" =
     initialState.lastValidRates ? "restored" : "fallback";
