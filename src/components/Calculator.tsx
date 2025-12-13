@@ -1212,3 +1212,6 @@ const Calculator = () => {
 };
 
 export default Calculator;
+
+// Named exports for testing
+export { calculatorReducer, ensureCarPriceLength, clampCars, readInitialState };

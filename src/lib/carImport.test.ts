@@ -40,9 +40,14 @@ describe("calculateCarImport", () => {
       scenario: "company",
     });
 
-    expect(result.totalVAT).toBeCloseTo(result.totalVATRefund, 3);
+    const speditorVatPortion =
+      baseParams.speditorFee - baseParams.speditorFee / (1 + 0.21);
+    expect(result.totalVATRefund).toBeCloseTo(
+      result.totalVAT + speditorVatPortion,
+      3
+    );
     expect(result.totalNetCostForCompany).toBeCloseTo(
-      result.totalFinalCost - result.totalVAT,
+      result.totalFinalCost - result.totalVATRefund,
       3,
     );
   });
@@ -80,11 +85,67 @@ describe("calculateCarImport", () => {
       ...baseParams,
       customsDuty: 0,
       vat: 0,
+      speditorVatRate: 0,
     });
 
     expect(result.totalCustoms).toBe(0);
     expect(result.totalVAT).toBe(0);
     expect(result.totalVATRefund).toBe(0);
+  });
+
+  it("applies default speditor VAT rate when not provided", () => {
+    const result = calculateCarImport({
+      ...baseParams,
+      scenario: "company",
+      speditorVatRate: undefined,
+    });
+
+    const speditorVatPortion =
+      baseParams.speditorFee - baseParams.speditorFee / (1 + 0.21);
+    expect(result.totalVATRefund).toBeCloseTo(
+      result.totalVAT + speditorVatPortion,
+      3
+    );
+  });
+
+  it("handles zero speditor fee without VAT portion", () => {
+    const result = calculateCarImport({
+      ...baseParams,
+      speditorFee: 0,
+      speditorVatRate: 0,
+      scenario: "company",
+    });
+
+    expect(result.speditorFee).toBe(0);
+    expect(result.totalVATRefund).toBeCloseTo(result.totalVAT, 3);
+  });
+
+  it("handles custom speditor VAT rate and clamps car count to capacity", () => {
+    const result = calculateCarImport({
+      ...baseParams,
+      scenario: "company",
+      speditorVatRate: 0.1,
+      containerType: "20ft",
+      numberOfCars: 3, // should clamp to 2
+      carPrices: [15000, 5000, 10000],
+      translationPages: 10,
+      miscellaneous: 100,
+      customsDuty: 25,
+      vat: 25,
+    });
+
+    expect(result.carResults).toHaveLength(2);
+    const speditorNet = baseParams.speditorFee / (1 + 0.1);
+    const speditorVatPortion = baseParams.speditorFee - speditorNet;
+    expect(result.speditorFee).toBeCloseTo(baseParams.speditorFee);
+    expect(result.totalVATRefund).toBeCloseTo(
+      result.totalVAT + speditorVatPortion * 2,
+      3
+    );
+    // translation per car should reflect 10 pages * 35
+    expect(result.translationPerCar).toBeCloseTo(350);
+    expect(result.freightPerContainerEUR).toBeCloseTo(3150);
+    expect(result.freightPerCar).toBeCloseTo(1575);
   });
 });
 

@@ -19,8 +19,9 @@ export const formatEUR = (value: number): string => {
 };
 
 export const parseKRWInput = (input: string): number => {
+  const safeInput = typeof input === "string" ? input : "";
   // Allow digits with a single decimal separator (comma or dot), strip spaces/other symbols.
-  const normalized = input
+  const normalized = safeInput
     .replace(/\s+/g, "")
     .replace(/[,]/g, ".")
     .replace(/[^0-9.]/g, "");

@@ -18,6 +18,7 @@ const baseProps: HookProps = {
   numberOfCars: 4,
   containerType: "40ft",
   speditorFee: 150 * 1.21,
+  speditorVatRate: 0.21,
 };
 
 const runHook = (override: Partial<HookProps> = {}): CalculationResults => {
@@ -90,12 +91,48 @@ describe("useCarImportCalculations", () => {
     expect(result.totalVAT).toBeGreaterThan(0);
 
     const firstCar = result.carResults[0];
-    expect(firstCar.vatRefund).toBeCloseTo(firstCar.vatAmount);
-    expect(result.totalVATRefund).toBeCloseTo(result.totalVAT);
+    const speditorVatPortion = baseProps.speditorFee - baseProps.speditorFee / (1 + 0.21);
+    expect(firstCar.vatRefund).toBeCloseTo(firstCar.vatAmount + speditorVatPortion);
+    expect(result.totalVATRefund).toBeCloseTo(result.totalVAT + speditorVatPortion * 4);
     expect(result.totalNetCostForCompany).toBeCloseTo(
-      result.totalFinalCost - result.totalVAT,
+      result.totalFinalCost - result.totalVATRefund,
       2,
     );
+  });
+
+  it("applies custom speditor VAT rate and zero vehicle taxes", () => {
+    const speditorVatRate = 0.1;
+    const result = runHook({
+      numberOfCars: 2,
+      containerType: "20ft",
+      carPrices: [5000, 6000],
+      scenario: "company",
+      customsDuty: 0,
+      vat: 0,
+      speditorVatRate,
+      speditorFee: 200,
+      translationPages: 0,
+      miscellaneous: 0,
+      homologationFee: 0,
+    });
+
+    expect(result.totalVAT).toBe(0);
+    const speditorVatPortion = result.speditorFee - result.speditorFee / (1 + speditorVatRate);
+    expect(result.totalVATRefund).toBeCloseTo(speditorVatPortion * 2, 3);
+    expect(result.totalNetCostForCompany).toBeCloseTo(
+      result.totalFinalCost - result.totalVATRefund,
+      3,
+    );
+  });
+
+  it("uses default speditor VAT rate when none provided", () => {
+    const result = runHook({
+      scenario: "company",
+      speditorVatRate: undefined,
+    });
+
+    const vatPortion = result.speditorFee - result.speditorFee / (1 + 0.21);
+    expect(result.totalVATRefund).toBeCloseTo(result.totalVAT + vatPortion * 4, 3);
   });
 
   it("clamps number of cars to container capacity", () => {
