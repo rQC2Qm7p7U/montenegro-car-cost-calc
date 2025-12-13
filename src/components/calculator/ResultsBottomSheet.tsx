@@ -79,6 +79,16 @@ export const ResultsBottomSheet = ({
   const companyNet = results.totalFinalCost - results.totalVAT;
   const vatRefundTotal = results.totalVAT;
   const eurPerUsdRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
+  const avgCarPurchase = carsWithPrices.length
+    ? results.totalCarPrices / carsWithPrices.length
+    : 0;
+  const totalPortAgent = results.portAgentFeePerCar * numberOfCars;
+  const totalSpeditor = results.speditorFee * numberOfCars;
+  const totalTranslation = results.translationPerCar * numberOfCars;
+  const perCarHomologation = results.carResults[0]?.homologationFee || 0;
+  const totalHomologation = perCarHomologation * numberOfCars;
+  const perCarMisc = results.carResults[0]?.miscellaneous || 0;
+  const totalMisc = perCarMisc * numberOfCars;
   const formatKrwPerUsd = (value: number) =>
     value > 0
       ? `₩${formatNumber(Math.round(value))}`
@@ -163,21 +173,73 @@ export const ResultsBottomSheet = ({
             </div>
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <div className="p-3 rounded-lg bg-muted/40 border border-border/50">
-                <p className="text-[11px] text-muted-foreground uppercase tracking-wide mb-1">Physical</p>
-                <p className="text-xl font-bold text-foreground">€{formatEUR(physicalTotal)}</p>
-                <p className="text-[11px] text-muted-foreground">With VAT</p>
-              </div>
-              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                <p className="text-[11px] text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">Company</p>
-                <p className="text-xl font-bold text-green-700 dark:text-green-400">€{formatEUR(companyNet)}</p>
-                <p className="text-[11px] text-green-700 dark:text-green-400">VAT refund applied</p>
-              </div>
-              <div className="p-3 rounded-lg bg-primary/5 border border-primary/30">
-                <p className="text-[11px] text-primary uppercase tracking-wide mb-1">Savings</p>
-                <p className="text-xl font-bold text-primary">€{formatEUR(Math.max(0, vatRefundTotal))}</p>
-                <p className="text-[11px] text-muted-foreground">Refunded VAT</p>
-              </div>
+              {[
+                {
+                  key: "scenario-physical",
+                  title: "Physical",
+                  colorClasses: "bg-muted/40 border border-border/50",
+                  value: `€${formatEUR(physicalTotal)}`,
+                  note: "With VAT",
+                  tip: `${carsWithPrices.length} cars × €${formatEURWithCents(avgFinalCost)} avg = €${formatEURWithCents(physicalTotal)}`,
+                },
+                {
+                  key: "scenario-company",
+                  title: "Company",
+                  colorClasses: "bg-green-500/10 border border-green-500/30",
+                  value: `€${formatEUR(companyNet)}`,
+                  note: "VAT refund applied",
+                  tip: `Physical €${formatEURWithCents(physicalTotal)} − VAT refund €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`,
+                },
+                {
+                  key: "scenario-savings",
+                  title: "Savings",
+                  colorClasses: "bg-primary/5 border border-primary/30",
+                  value: `€${formatEUR(Math.max(0, vatRefundTotal))}`,
+                  note: "Refunded VAT",
+                  tip: `VAT refund per car €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`,
+                },
+              ].map((item) => {
+                const isOpen = openInfoKey === item.key;
+                const content = (
+                  <div>
+                    <p className="font-semibold mb-1">{item.title} calculation</p>
+                    <p className="text-muted-foreground leading-snug">{item.tip}</p>
+                  </div>
+                );
+
+                return (
+                  <Tooltip key={item.key} delayDuration={150}>
+                    <Popover open={isOpen} onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}>
+                      <TooltipTrigger asChild>
+                        <PopoverTrigger asChild>
+                          <button
+                            type="button"
+                            className={`p-3 rounded-lg text-left w-full cursor-help transition-colors ${item.colorClasses}`}
+                            onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                            aria-label={`${item.title} calculation details`}
+                          >
+                            <p className={`text-[11px] uppercase tracking-wide mb-1 ${item.title === "Company" ? "text-green-700 dark:text-green-400" : item.title === "Savings" ? "text-primary" : "text-muted-foreground"}`}>
+                              {item.title}
+                            </p>
+                            <p className={`text-xl font-bold ${item.title === "Company" ? "text-green-700 dark:text-green-400" : item.title === "Savings" ? "text-primary" : "text-foreground"}`}>
+                              {item.value}
+                            </p>
+                            <p className={`text-[11px] ${item.title === "Company" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
+                              {item.note}
+                            </p>
+                          </button>
+                        </PopoverTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
+                        {content}
+                      </TooltipContent>
+                      <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                        {content}
+                      </PopoverContent>
+                    </Popover>
+                  </Tooltip>
+                );
+              })}
             </div>
           </Card>
           
@@ -248,47 +310,132 @@ export const ResultsBottomSheet = ({
             
             <Card className="overflow-hidden">
               <div className="divide-y divide-border/50">
-                <div className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Car className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate">Vehicles ({carsWithPrices.length}×)</span>
-                  </div>
-                  <span className="font-semibold shrink-0">€{formatEUR(results.totalCarPrices)}</span>
-                </div>
-                
-                <div className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Ship className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-sm block truncate">Freight ({containerType})</span>
-                      <p className="text-[10px] text-muted-foreground">
-                        ${formatNumber(containerInfo.freightUSD)}
-                      </p>
+                {[
+                  {
+                    key: "breakdown-vehicles",
+                    label: `Vehicles (${carsWithPrices.length}×)`,
+                    icon: <Car className="w-4 h-4 text-muted-foreground shrink-0" />,
+                    value: `€${formatEUR(results.totalCarPrices)}`,
+                    hint: `${carsWithPrices.length} cars × €${formatEURWithCents(avgCarPurchase)} avg = €${formatEURWithCents(results.totalCarPrices)}`,
+                  },
+                  {
+                    key: "breakdown-freight",
+                    label: `Freight (${containerType})`,
+                    icon: <Ship className="w-4 h-4 text-muted-foreground shrink-0" />,
+                    value: `€${formatEUR(results.freightPerContainerEUR)}`,
+                    sub: `$${formatNumber(containerInfo.freightUSD)}`,
+                    hint: `$${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR = €${formatEURWithCents(results.freightPerContainerEUR)}`,
+                  },
+                ].map((item) => {
+                  const isOpen = openInfoKey === item.key;
+                  const content = (
+                    <div>
+                      <p className="font-semibold mb-1">{item.label} calculation</p>
+                      <p className="text-muted-foreground leading-snug">{item.hint}</p>
                     </div>
-                  </div>
-                  <span className="font-semibold shrink-0">€{formatEUR(results.freightPerContainerEUR)}</span>
-                </div>
+                  );
 
-                <div className="p-3 bg-muted/30 flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium truncate">CIF Value</span>
-                  <span className="font-bold text-primary shrink-0">€{formatEUR(results.totalCIF)}</span>
-                </div>
+                  return (
+                    <Tooltip key={item.key} delayDuration={150}>
+                      <Popover open={isOpen} onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}>
+                        <TooltipTrigger asChild>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="p-3 flex items-center justify-between gap-2 w-full text-left cursor-help"
+                              onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                              aria-label={`${item.label} calculation details`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                {item.icon}
+                                <div className="min-w-0">
+                                  <span className="text-sm block truncate">{item.label}</span>
+                                  {item.sub && (
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {item.sub}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <span className="font-semibold shrink-0">{item.value}</span>
+                            </button>
+                          </PopoverTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[260px] text-xs hidden sm:block">
+                          {content}
+                        </TooltipContent>
+                        <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                          {content}
+                        </PopoverContent>
+                      </Popover>
+                    </Tooltip>
+                  );
+                })}
 
-                <div className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate">Customs {customsDuty}%</span>
-                  </div>
-                  <span className="font-semibold shrink-0">€{formatEUR(results.totalCustoms)}</span>
-                </div>
+                {[
+                  {
+                    key: "breakdown-cif",
+                    label: "CIF Value",
+                    highlight: true,
+                    value: `€${formatEUR(results.totalCIF)}`,
+                    tip: `Vehicles €${formatEURWithCents(results.totalCarPrices)} + Freight €${formatEURWithCents(results.freightPerContainerEUR)} = €${formatEURWithCents(results.totalCIF)}`,
+                  },
+                  {
+                    key: "breakdown-customs",
+                    label: `Customs ${customsDuty}%`,
+                    icon: <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />,
+                    value: `€${formatEUR(results.totalCustoms)}`,
+                    tip: `CIF €${formatEURWithCents(results.totalCIF)} × ${customsDuty}% = €${formatEURWithCents(results.totalCustoms)}`,
+                  },
+                  {
+                    key: "breakdown-vat",
+                    label: `VAT ${vat}%`,
+                    icon: <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />,
+                    value: `€${formatEUR(results.totalVAT)}`,
+                    tip: `(CIF €${formatEURWithCents(results.totalCIF)} + Customs €${formatEURWithCents(results.totalCustoms)}) × ${vat}% = €${formatEURWithCents(results.totalVAT)}`,
+                  },
+                ].map((item) => {
+                  const isOpen = openInfoKey === item.key;
+                  const content = (
+                    <div>
+                      <p className="font-semibold mb-1">{item.label} calculation</p>
+                      <p className="text-muted-foreground leading-snug">{item.tip}</p>
+                    </div>
+                  );
 
-                <div className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm truncate">VAT {vat}%</span>
-                  </div>
-                  <span className="font-semibold shrink-0">€{formatEUR(results.totalVAT)}</span>
-                </div>
+                  return (
+                    <div key={item.key}>
+                      <Tooltip delayDuration={150}>
+                        <Popover open={isOpen} onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className={`p-3 flex items-center justify-between gap-2 w-full text-left ${item.highlight ? "bg-muted/30 font-medium" : ""}`}
+                                onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                                aria-label={`${item.label} calculation details`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {item.icon}
+                                  <span className={`text-sm truncate ${item.highlight ? "font-medium" : ""}`}>{item.label}</span>
+                                </div>
+                                <span className={`${item.highlight ? "font-bold text-primary" : "font-semibold"} shrink-0`}>
+                                  {item.value}
+                                </span>
+                              </button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[260px] text-xs hidden sm:block">
+                            {content}
+                          </TooltipContent>
+                          <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                            {content}
+                          </PopoverContent>
+                        </Popover>
+                      </Tooltip>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Services Section */}
@@ -297,28 +444,87 @@ export const ResultsBottomSheet = ({
                   Services & Fees
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-border/30">
-                  <div className="p-2 bg-background flex justify-between text-xs">
-                    <span className="text-muted-foreground truncate">Port & Agent</span>
-                    <span className="shrink-0 ml-1">€{formatEUR(results.portAgentFeePerCar * numberOfCars)}</span>
-                  </div>
-                  <div className="p-2 bg-background flex justify-between text-xs">
-                    <span className="text-muted-foreground truncate">Speditor</span>
-                    <span className="shrink-0 ml-1">€{formatEUR(results.speditorFee * numberOfCars)}</span>
-                  </div>
-                  <div className="p-2 bg-background flex justify-between text-xs">
-                    <span className="text-muted-foreground truncate">Translation</span>
-                    <span className="shrink-0 ml-1">€{formatEUR(results.translationPerCar * numberOfCars)}</span>
-                  </div>
-                  <div className="p-2 bg-background flex justify-between text-xs">
-                    <span className="text-muted-foreground truncate">Homologation</span>
-                    <span className="shrink-0 ml-1">€{formatEUR((results.carResults[0]?.homologationFee || 0) * numberOfCars)}</span>
-                  </div>
-                  {results.carResults[0]?.miscellaneous > 0 && (
-                    <div className="p-2 bg-background flex justify-between text-xs col-span-2">
-                      <span className="text-muted-foreground">Miscellaneous</span>
-                      <span>€{formatEUR(results.carResults[0].miscellaneous * numberOfCars)}</span>
-                    </div>
-                  )}
+                  {([
+                    {
+                      key: "service-port",
+                      label: "Port & Agent",
+                      perCar: results.portAgentFeePerCar,
+                      total: totalPortAgent,
+                    },
+                    {
+                      key: "service-speditor",
+                      label: "Speditor",
+                      perCar: results.speditorFee,
+                      total: totalSpeditor,
+                    },
+                    {
+                      key: "service-translation",
+                      label: "Translation",
+                      perCar: results.translationPerCar,
+                      total: totalTranslation,
+                    },
+                    {
+                      key: "service-homologation",
+                      label: "Homologation",
+                      perCar: perCarHomologation,
+                      total: totalHomologation,
+                    },
+                    results.carResults[0]?.miscellaneous > 0
+                      ? ({
+                          key: "service-misc",
+                          label: "Miscellaneous",
+                          perCar: perCarMisc,
+                          total: totalMisc,
+                          fullRow: true,
+                        } as const)
+                      : null,
+                  ] as const)
+                    .filter(
+                      (item): item is {
+                        key: string;
+                        label: string;
+                        perCar: number;
+                        total: number;
+                        fullRow?: boolean;
+                      } => Boolean(item),
+                    )
+                    .map((service) => {
+                    const isOpen = openInfoKey === service.key;
+                    const content = (
+                      <div>
+                        <p className="font-semibold mb-1">{service.label} calculation</p>
+                        <p className="text-muted-foreground leading-snug">
+                          €{formatEURWithCents(service.perCar)} × {numberOfCars} cars = €{formatEURWithCents(service.total)}
+                        </p>
+                      </div>
+                    );
+
+                    return (
+                      <Tooltip key={service.key} delayDuration={150}>
+                        <Popover open={isOpen} onOpenChange={(open) => setOpenInfoKey(open ? service.key : null)}>
+                          <TooltipTrigger asChild>
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className={`p-2 bg-background flex justify-between items-center text-xs cursor-help w-full text-left ${service.fullRow ? "col-span-2" : ""}`}
+                                onClick={() => setOpenInfoKey(isOpen ? null : service.key)}
+                                aria-label={`${service.label} calculation details`}
+                              >
+                                <span className="text-muted-foreground truncate">{service.label}</span>
+                                <span className="shrink-0 ml-1">€{formatEUR(service.total)}</span>
+                              </button>
+                            </PopoverTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
+                            {content}
+                          </TooltipContent>
+                          <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                            {content}
+                          </PopoverContent>
+                        </Popover>
+                      </Tooltip>
+                    );
+                  })}
                 </div>
               </div>
 
