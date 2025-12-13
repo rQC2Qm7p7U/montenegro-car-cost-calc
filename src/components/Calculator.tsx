@@ -170,6 +170,7 @@ type CalculatorState = {
 
 type Action =
   | { type: "setCarPrices"; value: number[] }
+  | { type: "setCarPricesWithUpdater"; updater: SetStateAction<number[]> }
   | { type: "updateCarPrice"; index: number; value: number }
   | { type: "setNumberOfCars"; value: number }
   | { type: "setScenario"; value: "physical" | "company" }
@@ -211,6 +212,14 @@ const calculatorReducer = (state: CalculatorState, action: Action): CalculatorSt
         ...state,
         carPrices: ensureCarPriceLength(action.value, state.numberOfCars, state.containerType),
       };
+    case "setCarPricesWithUpdater": {
+      const nextValue =
+        typeof action.updater === "function" ? action.updater(state.carPrices) : action.updater;
+      return {
+        ...state,
+        carPrices: ensureCarPriceLength(nextValue, state.numberOfCars, state.containerType),
+      };
+    }
     case "updateCarPrice": {
       const next = ensureCarPriceLength(
         [...state.carPrices],
@@ -337,9 +346,9 @@ const Calculator = () => {
 
   const setCarPricesTracked = useCallback(
     (updater: SetStateAction<number[]>) => {
-      dispatchTracked({ type: "setCarPrices", value: typeof updater === "function" ? updater(carPrices) : updater });
+      dispatchTracked({ type: "setCarPricesWithUpdater", updater });
     },
-    [carPrices, dispatchTracked],
+    [dispatchTracked],
   );
 
   const setKrwToEurRateTracked = useCallback(

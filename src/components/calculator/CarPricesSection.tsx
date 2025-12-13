@@ -26,6 +26,19 @@ const clampNonNegative = (value: number) =>
 const formatEuroInput = (value: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
 
+const computeEurFromKrwInput = (input: string, rate: number, raw: boolean) => {
+  const parsedKRW = parseKRWInput(input);
+  const actualKRW = raw ? parsedKRW : parsedKRW * 10000;
+  return clampNonNegative(convertKRWToEUR(actualKRW, rate));
+};
+
+const formatKrwFromEur = (eur: number, rate: number, raw: boolean) => {
+  if (!eur || !Number.isFinite(rate) || rate <= 0) return "";
+  const krw = eur / rate;
+  const display = raw ? krw : krw / 10000;
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(display);
+};
+
 export const CarPricesSection = ({
   numberOfCars,
   carPrices,
@@ -38,6 +51,8 @@ export const CarPricesSection = ({
   const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
   const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
   const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout> | undefined>>({});
+  const prevKrwRateRef = useRef(krwToEurRate);
+  const prevRawModeRef = useRef(rawKRWMode);
 
   const updateCarPriceDebounced = (index: number, value: number) => {
     const timers = debounceTimersRef.current;
@@ -69,17 +84,14 @@ export const CarPricesSection = ({
 
   const handleKRWChange = (index: number, value: string) => {
     const cleaned = value.replace(/[^\d,]/g, "");
-    const newKrwValues = [...krwInputValues];
-    newKrwValues[index] = cleaned;
-    setKrwInputValues(newKrwValues);
+    setKrwInputValues((prev) => {
+      const next = [...prev];
+      next[index] = cleaned;
+      return next;
+    });
 
-    // Convert KRW to EUR and update carPrices
-    const parsedKRW = parseKRWInput(cleaned);
-    const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
-    const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
-    
+    const eurValue = computeEurFromKrwInput(cleaned, krwToEurRate, rawKRWMode);
     updateCarPriceDebounced(index, eurValue);
-
     setEurInputValues((prev) => {
       const next = [...prev];
       next[index] = eurValue ? formatEuroInput(eurValue) : "";
@@ -88,15 +100,14 @@ export const CarPricesSection = ({
   };
 
   const setAllToSamePrice = () => {
-    const firstPrice = clampNonNegative(carPrices[0] ?? 0);
-    const resolvedEurInput =
-      (eurInputValues[0] ?? "") || (firstPrice ? formatEuroInput(firstPrice) : "");
-    const resolvedKrwInput = krwInputValues[0] ?? "";
+    const baseEur = clampNonNegative(carPrices[0] ?? 0);
+    const eurDisplay = baseEur ? formatEuroInput(baseEur) : "";
+    const krwDisplay = formatKrwFromEur(baseEur, krwToEurRate, rawKRWMode);
 
-    const newPrices = Array(numberOfCars).fill(firstPrice);
+    const newPrices = Array(numberOfCars).fill(baseEur);
     setCarPrices(newPrices);
-    setEurInputValues(Array(numberOfCars).fill(resolvedEurInput));
-    setKrwInputValues(Array(numberOfCars).fill(resolvedKrwInput));
+    setEurInputValues(Array(numberOfCars).fill(eurDisplay));
+    setKrwInputValues(Array(numberOfCars).fill(krwDisplay));
   };
 
   const completedCount = carPrices.filter(p => p > 0).length;
@@ -138,32 +149,40 @@ export const CarPricesSection = ({
     });
   }, [carPrices, numberOfCars]);
 
+  // Sync KRW inputs when switching to KRW mode or when rates/raw mode change
+  useEffect(() => {
+    if (currencyMode !== "krw") return;
+    setKrwInputValues((prev) => {
+      const next = [...prev];
+      for (let i = 0; i < numberOfCars; i += 1) {
+        next[i] = carPrices[i] > 0 ? formatKrwFromEur(carPrices[i], krwToEurRate, rawKRWMode) : "";
+      }
+      return next.slice(0, numberOfCars);
+    });
+  }, [carPrices, currencyMode, krwToEurRate, numberOfCars, rawKRWMode]);
+
   // Recalculate EUR prices when KRW rate or input mode changes
   useEffect(() => {
+    const rateChanged = prevKrwRateRef.current !== krwToEurRate;
+    const rawChanged = prevRawModeRef.current !== rawKRWMode;
+    prevKrwRateRef.current = krwToEurRate;
+    prevRawModeRef.current = rawKRWMode;
+    if (!rateChanged && !rawChanged) return;
     if (!krwInputValues.some(Boolean)) return;
-    setCarPrices((prevPrices) => {
-      const updated = [...prevPrices];
-      krwInputValues.forEach((value, index) => {
-        if (!value) return;
-        const parsedKRW = parseKRWInput(value);
-        const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
-        const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
-        updated[index] = eurValue;
-      });
-      return updated;
+
+    const updatedPrices = [...carPrices];
+    const updatedEurInputs = [...eurInputValues];
+
+    krwInputValues.forEach((value, index) => {
+      if (!value) return;
+      const eurValue = computeEurFromKrwInput(value, krwToEurRate, rawKRWMode);
+      updatedPrices[index] = eurValue;
+      updatedEurInputs[index] = eurValue ? formatEuroInput(eurValue) : "";
     });
-    setEurInputValues((prev) => {
-      const next = [...prev];
-      krwInputValues.forEach((value, index) => {
-        if (!value) return;
-        const parsedKRW = parseKRWInput(value);
-        const actualKRW = rawKRWMode ? parsedKRW : parsedKRW * 10000;
-        const eurValue = clampNonNegative(convertKRWToEUR(actualKRW, krwToEurRate));
-        next[index] = eurValue ? formatEuroInput(eurValue) : "";
-      });
-      return next;
-    });
-  }, [krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
+
+    setCarPrices(updatedPrices);
+    setEurInputValues(updatedEurInputs);
+  }, [carPrices, eurInputValues, krwInputValues, krwToEurRate, rawKRWMode, setCarPrices]);
 
   useEffect(
     () => () => {
