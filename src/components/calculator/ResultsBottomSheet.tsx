@@ -385,7 +385,8 @@ export const ResultsBottomSheet = ({
                           tip: `Additional per-car costs you entered: €${formatEURWithCents(car.miscellaneous)}`,
                         },
                       ].map((item) => {
-                        const isOpen = openInfoKey === item.key;
+                        const infoKey = `${car.carIndex}-${item.key}`;
+                        const isOpen = openInfoKey === infoKey;
                         const explanation = (
                           <div>
                             <p className="font-semibold mb-1">{item.label} calculation</p>
@@ -394,18 +395,17 @@ export const ResultsBottomSheet = ({
                         );
 
                         return (
-                          <Popover
-                            key={item.key}
-                            open={isOpen}
-                            onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}
-                          >
-                            <Tooltip delayDuration={150}>
+                          <Tooltip key={infoKey} delayDuration={150}>
+                            <Popover
+                              open={isOpen}
+                              onOpenChange={(open) => setOpenInfoKey(open ? infoKey : null)}
+                            >
                               <TooltipTrigger asChild>
                                 <PopoverTrigger asChild>
                                   <button
                                     type="button"
                                     className="p-2 rounded bg-muted/30 text-center cursor-help w-full h-full"
-                                    onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                                    onClick={() => setOpenInfoKey(isOpen ? null : infoKey)}
                                     aria-label={`${item.label} calculation details`}
                                   >
                                     <p className="text-[10px] text-muted-foreground">{item.label}</p>
@@ -413,14 +413,14 @@ export const ResultsBottomSheet = ({
                                   </button>
                                 </PopoverTrigger>
                               </TooltipTrigger>
-                            </Tooltip>
-                            <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
-                              {explanation}
-                            </TooltipContent>
-                            <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
-                              {explanation}
-                            </PopoverContent>
-                          </Popover>
+                              <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
+                                {explanation}
+                              </TooltipContent>
+                              <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
+                                {explanation}
+                              </PopoverContent>
+                            </Popover>
+                          </Tooltip>
                         );
                       })}
                     </div>
