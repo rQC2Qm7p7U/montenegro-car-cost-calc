@@ -29,6 +29,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Language } from "@/types/language";
 
 const PERSIST_KEY = "car-import-state-v1";
@@ -68,6 +78,12 @@ const calculatorCopy: Record<
     shareSuccessTitle: string;
     shareSuccessDescription: string;
     shareFallbackDescription: string;
+    shareConfigTitle: string;
+    shareConfigDescription: string;
+    shareConfigWarningTitle: string;
+    shareConfigWarningBody: string;
+    shareConfigCopy: string;
+    shareConfigCopied: string;
     ratesUpdatedTitle: string;
     ratesFallbackTitle: string;
     ratesUpdatedDescription: (krw: number, usd: number) => string;
@@ -92,6 +108,13 @@ const calculatorCopy: Record<
     shareSuccessDescription: "Share this configured calculator.",
     shareFallbackDescription:
       "Clipboard access was limited; used fallback copy.",
+    shareConfigTitle: "Share configured calculator",
+    shareConfigDescription: "Export current prices and rates as a safe token.",
+    shareConfigWarningTitle: "Sensitive data",
+    shareConfigWarningBody:
+      "The token contains all prices and fees. Only share with people you trust.",
+    shareConfigCopy: "Copy token",
+    shareConfigCopied: "Token copied",
     ratesUpdatedTitle: "Rates updated",
     ratesFallbackTitle: "Using fallback rates",
     ratesUpdatedDescription: (krw, usd) =>
@@ -125,6 +148,13 @@ const calculatorCopy: Record<
     shareSuccessDescription: "Поделитесь настроенным калькулятором.",
     shareFallbackDescription:
       "Доступ к буферу ограничен, скопировали альтернативным способом.",
+    shareConfigTitle: "Поделиться настройками",
+    shareConfigDescription: "Экспорт текущих цен и курсов в безопасный токен.",
+    shareConfigWarningTitle: "Конфиденциальные данные",
+    shareConfigWarningBody:
+      "Токен содержит все цены и сборы. Делитесь им только с доверенными людьми.",
+    shareConfigCopy: "Скопировать токен",
+    shareConfigCopied: "Токен скопирован",
     ratesUpdatedTitle: "Курсы обновлены",
     ratesFallbackTitle: "Используем резервные курсы",
     ratesUpdatedDescription: (krw, usd) =>
@@ -281,13 +311,11 @@ const readInitialState = (): InitialState => {
 
     const legacyStoredRates = deriveLegacyRates(
       parseNumber(
-        (merged as Record<string, unknown>).krwToEurRate ??
-          params.get("krwToEurRate"),
+        (merged as Record<string, unknown>).krwToEurRate,
         NaN
       ),
       parseNumber(
-        (merged as Record<string, unknown>).usdToEurRate ??
-          params.get("usdToEurRate"),
+        (merged as Record<string, unknown>).usdToEurRate,
         NaN
       )
     );
@@ -567,6 +595,8 @@ const Calculator = () => {
     setIsResultsOpenState(open);
   }, []);
   const isResultsOpen = isResultsOpenState;
+  const [shareConfigOpen, setShareConfigOpen] = useState(false);
+  const [shareToken, setShareToken] = useState("");
 
   const markFormChanged = useCallback(() => {
     formChangeRef.current = true;
@@ -953,6 +983,74 @@ const Calculator = () => {
     }
   };
 
+  const buildShareToken = () => {
+    const payload = {
+      carPrices,
+      krwPerUsdRate,
+      usdPerEurRate,
+      customsDuty,
+      vat,
+      translationPages,
+      homologationFee,
+      miscellaneous,
+      scenario,
+      numberOfCars,
+      containerType,
+      autoUpdateFX,
+    };
+    const json = JSON.stringify(payload);
+    // Encode to base64 safely for Unicode.
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    setShareToken(encoded);
+  };
+
+  const handleShareConfig = () => {
+    buildShareToken();
+    setShareConfigOpen(true);
+  };
+
+  const handleCopyToken = async () => {
+    const activeElement = document.activeElement as HTMLElement | null;
+    try {
+      await navigator.clipboard.writeText(shareToken);
+      toast({
+        title: t.shareConfigCopied,
+        description: t.shareConfigDescription,
+      });
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = shareToken;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.select();
+      let success = false;
+      try {
+        success = document.execCommand("copy");
+      } catch {
+        success = false;
+      } finally {
+        document.body.removeChild(textarea);
+        if (activeElement?.focus) activeElement.focus();
+      }
+      if (success) {
+        toast({
+          title: t.shareConfigCopied,
+          description: t.shareConfigDescription,
+        });
+      } else {
+        toast({
+          title: language === "en" ? "Copy failed" : "Не удалось скопировать",
+          description:
+            language === "en"
+              ? "Try copying the token manually."
+              : "Попробуйте скопировать токен вручную.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const renderFxUpdatedLabel = () => {
     if (!lastUpdatedAt) return t.fxStatus.notUpdated;
     const diffMs = Date.now() - lastUpdatedAt;
@@ -1018,6 +1116,15 @@ const Calculator = () => {
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={controlButtonClasses}
+                  onClick={handleShareConfig}
+                  aria-label={t.shareConfigTitle}
+                >
+                  <Share2 className="w-4 h-4" />
+                </Button>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1204,6 +1311,27 @@ const Calculator = () => {
           </div>
         </BottomSheetBody>
       </BottomSheet>
+
+      <AlertDialog open={shareConfigOpen} onOpenChange={setShareConfigOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.shareConfigWarningTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t.shareConfigWarningBody}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="bg-muted/50 border border-border/60 rounded-lg p-3 text-xs break-all select-text">
+            {shareToken}
+          </div>
+          <p className="text-xs text-muted-foreground">{t.shareConfigDescription}</p>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{language === "en" ? "Close" : "Закрыть"}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCopyToken}>
+              {t.shareConfigCopy}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
