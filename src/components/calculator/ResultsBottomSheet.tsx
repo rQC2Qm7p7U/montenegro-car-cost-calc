@@ -408,7 +408,7 @@ export const ResultsBottomSheet = ({
                           key: "freight",
                           label: "Freight",
                           value: car.freightPerCar,
-                          tip: `(${containerInfo.freightUSD} USD × ${formatEurPerUsd(eurPerUsdRate)} EUR/USD) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
+                          tip: `($${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
                         },
                         {
                           key: "customs",
