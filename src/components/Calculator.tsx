@@ -684,7 +684,7 @@ const Calculator = () => {
                 <Ship className="w-5 h-5 text-primary-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
+                <h1 className="text-base sm:text-xl font-bold text-foreground leading-tight break-words">
                   Car Import Calculator
                 </h1>
                 <p className="text-xs text-muted-foreground">Korea → Montenegro</p>
