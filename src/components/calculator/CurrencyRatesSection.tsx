@@ -5,8 +5,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { RefreshCw, Coins } from "lucide-react";
+import type { Language } from "@/types/language";
 
 interface CurrencyRatesSectionProps {
+  language: Language;
   autoUpdateFX: boolean;
   setAutoUpdateFX: (value: boolean) => void;
   isLoadingRates: boolean;
@@ -20,7 +22,55 @@ interface CurrencyRatesSectionProps {
   onRevertToLastValid: () => void;
 }
 
+const copy: Record<
+  Language,
+  {
+    title: string;
+    subtitle: string;
+    krwLabel: string;
+    usdLabel: string;
+    perDollar: string;
+    perEuro: string;
+    refresh: string;
+    loading: string;
+    restore: string;
+    restoreButton: string;
+    lastUpdated: string;
+    noData: string;
+  }
+> = {
+  en: {
+    title: "Exchange Rates",
+    subtitle: "Tap to edit",
+    krwLabel: "KRW → USD",
+    usdLabel: "USD → EUR",
+    perDollar: "per $1",
+    perEuro: "per €1",
+    refresh: "Refresh",
+    loading: "Loading...",
+    restore: "Restore last successful rates?",
+    restoreButton: "Revert",
+    lastUpdated: "Last updated:",
+    noData: "No data",
+  },
+  ru: {
+    title: "Курсы валют",
+    subtitle: "Нажмите, чтобы изменить",
+    krwLabel: "KRW → USD",
+    usdLabel: "USD → EUR",
+    perDollar: "за $1",
+    perEuro: "за €1",
+    refresh: "Обновить",
+    loading: "Обновляем...",
+    restore: "Восстановить последний успешный курс?",
+    restoreButton: "Вернуть",
+    lastUpdated: "Последнее обновление:",
+    noData: "Нет данных",
+  },
+};
+
 export const CurrencyRatesSection = ({
+  language,
   autoUpdateFX,
   setAutoUpdateFX,
   isLoadingRates,
@@ -33,6 +83,7 @@ export const CurrencyRatesSection = ({
   lastValidRates,
   onRevertToLastValid,
 }: CurrencyRatesSectionProps) => {
+  const t = copy[language];
   const [editKrw, setEditKrw] = useState(false);
   const [editUsd, setEditUsd] = useState(false);
   const [usdPerEurInput, setUsdPerEurInput] = useState(() =>
@@ -63,8 +114,8 @@ export const CurrencyRatesSection = ({
   };
 
   const updatedLabel = lastUpdatedAt
-    ? new Date(lastUpdatedAt).toLocaleString()
-    : "No data";
+    ? new Date(lastUpdatedAt).toLocaleString(language === "ru" ? "ru-RU" : "en-US")
+    : t.noData;
 
   const normalizeUsdInput = (value: string) => {
     const withComma = value.replace(/\./g, ",");
@@ -104,8 +155,8 @@ export const CurrencyRatesSection = ({
             <Coins className="w-4 h-4 text-primary/90" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Exchange Rates</h2>
-            <p className="text-[11px] text-muted-foreground">Tap to edit</p>
+            <h2 className="text-sm font-semibold text-foreground">{t.title}</h2>
+            <p className="text-[11px] text-muted-foreground">{t.subtitle}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -124,7 +175,7 @@ export const CurrencyRatesSection = ({
           >
             <RefreshCw className={`w-4 h-4 ${isLoadingRates ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline text-xs">
-              {isLoadingRates ? "Loading..." : "Refresh"}
+              {isLoadingRates ? t.loading : t.refresh}
             </span>
           </Button>
         </div>
@@ -132,7 +183,7 @@ export const CurrencyRatesSection = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-          <Label className="text-[11px] text-muted-foreground block mb-1">KRW → USD</Label>
+          <Label className="text-[11px] text-muted-foreground block mb-1">{t.krwLabel}</Label>
           {editKrw ? (
             <Input
               autoFocus
@@ -155,14 +206,14 @@ export const CurrencyRatesSection = ({
             >
               <div className="flex items-center justify-between w-full">
                 <span className="font-semibold text-foreground">{formatKrwPerUsd(krwPerUsdRate)}</span>
-                <span className="text-muted-foreground text-[11px] ml-2">per $1</span>
+                <span className="text-muted-foreground text-[11px] ml-2">{t.perDollar}</span>
               </div>
             </button>
           )}
         </div>
 
         <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50">
-          <Label className="text-[11px] text-muted-foreground block mb-1">USD → EUR</Label>
+          <Label className="text-[11px] text-muted-foreground block mb-1">{t.usdLabel}</Label>
           {editUsd ? (
             <Input
               autoFocus
@@ -192,7 +243,7 @@ export const CurrencyRatesSection = ({
             >
               <div className="flex items-center justify-between w-full">
                 <span className="font-semibold text-foreground">{formatUsdPerEur(usdPerEurRate)}</span>
-                <span className="text-muted-foreground text-[11px] ml-2">per €1</span>
+                <span className="text-muted-foreground text-[11px] ml-2">{t.perEuro}</span>
               </div>
             </button>
           )}
@@ -201,15 +252,15 @@ export const CurrencyRatesSection = ({
 
       {lastValidRates && (
         <div className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 border border-destructive/30 mt-2">
-          <p className="text-[11px] text-destructive">Restore last successful rates?</p>
+          <p className="text-[11px] text-destructive">{t.restore}</p>
           <Button size="sm" variant="outline" onClick={onRevertToLastValid}>
-            Revert
+            {t.restoreButton}
           </Button>
         </div>
       )}
 
       <p className="text-[11px] text-muted-foreground mt-2">
-        Last updated: {updatedLabel}
+        {t.lastUpdated} {updatedLabel}
       </p>
     </Card>
   );

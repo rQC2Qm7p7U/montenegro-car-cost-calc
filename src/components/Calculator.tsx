@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useReducer } from "react";
 import type { SetStateAction } from "react";
-import { Ship, Calculator as CalcIcon, X, Share2, RefreshCcw, AlertTriangle, Clock } from "lucide-react";
+import { Ship, Calculator as CalcIcon, X, Share2, RefreshCcw, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
 import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
@@ -10,13 +10,14 @@ import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
 import { VehicleDetailsSection } from "./calculator/VehicleDetailsSection";
 import { CarPricesSection } from "./calculator/CarPricesSection";
 import { ResultsBottomSheet } from "./calculator/ResultsBottomSheet";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { BottomSheet, BottomSheetBody, BottomSheetHeader } from "@/components/ui/bottom-sheet";
+import type { Language } from "@/types/language";
 
 const PERSIST_KEY = "car-import-state-v1";
 const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
 const FX_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
+const LANGUAGE_STORAGE_KEY = "car-import-language";
 
 const DEFAULTS = {
   customsDuty: 5,
@@ -29,6 +30,104 @@ const DEFAULTS = {
 const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
   containerType === "20ft" ? 2 : 4;
 const SPEDITOR_FEE = 150 * 1.21;
+
+const calculatorCopy: Record<
+  Language,
+  {
+    title: string;
+    subtitle: string;
+    ratesSheetTitle: string;
+    ratesSheetSubtitle: string;
+    shareSuccessTitle: string;
+    shareSuccessDescription: string;
+    shareFallbackDescription: string;
+    ratesUpdatedTitle: string;
+    ratesFallbackTitle: string;
+    ratesUpdatedDescription: (krw: number, usd: number) => string;
+    ratesFallbackDescription: string;
+    fxStatus: {
+      notUpdated: string;
+      justNow: string;
+      minuteAgo: string;
+      minutesAgo: (minutes: number) => string;
+    };
+    calculateReady: string;
+    calculateMissing: (remaining: number) => string;
+    copyRatesLabel: string;
+  }
+> = {
+  en: {
+    title: "Car Import Calculator",
+    subtitle: "Korea → Montenegro",
+    ratesSheetTitle: "Exchange Rates",
+    ratesSheetSubtitle: "KRW → USD & USD → EUR",
+    shareSuccessTitle: "Link copied",
+    shareSuccessDescription: "Share this configured calculator.",
+    shareFallbackDescription: "Clipboard access was limited; used fallback copy.",
+    ratesUpdatedTitle: "Rates updated",
+    ratesFallbackTitle: "Using fallback rates",
+    ratesUpdatedDescription: (krw, usd) =>
+      `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(krw)).replace(/\u00A0/g, " ")} KRW | €1 = $${usd
+        .toLocaleString("ru-RU", {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        })
+        .replace(/\u00A0/g, " ")}`,
+    ratesFallbackDescription: "Live rates were unavailable or invalid; using safe defaults.",
+    fxStatus: {
+      notUpdated: "Not updated yet",
+      justNow: "Just now",
+      minuteAgo: "Updated 1 min ago",
+      minutesAgo: (minutes: number) => `Updated ${minutes} min ago`,
+    },
+    calculateReady: "Calculate",
+    calculateMissing: (remaining: number) =>
+      `Enter ${remaining} more price${remaining > 1 ? "s" : ""}`,
+    copyRatesLabel: "Updated",
+  },
+  ru: {
+    title: "Калькулятор ввоза авто",
+    subtitle: "Корея → Черногория",
+    ratesSheetTitle: "Курсы валют",
+    ratesSheetSubtitle: "KRW → USD и USD → EUR",
+    shareSuccessTitle: "Ссылка скопирована",
+    shareSuccessDescription: "Поделитесь настроенным калькулятором.",
+    shareFallbackDescription: "Доступ к буферу ограничен, скопировали альтернативным способом.",
+    ratesUpdatedTitle: "Курсы обновлены",
+    ratesFallbackTitle: "Используем резервные курсы",
+    ratesUpdatedDescription: (krw, usd) =>
+      `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(krw)).replace(/\u00A0/g, " ")} KRW | €1 = $${usd
+        .toLocaleString("ru-RU", {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        })
+        .replace(/\u00A0/g, " ")}`,
+    ratesFallbackDescription: "Не удалось получить живые курсы, используем безопасные значения.",
+    fxStatus: {
+      notUpdated: "Еще не обновлялось",
+      justNow: "Только что",
+      minuteAgo: "Обновлено минуту назад",
+      minutesAgo: (minutes: number) => `Обновлено ${minutes} мин назад`,
+    },
+    calculateReady: "Рассчитать",
+    calculateMissing: (remaining: number) =>
+      `Укажите еще ${remaining} цен${remaining === 1 ? "у" : remaining < 5 ? "ы" : ""}`,
+    copyRatesLabel: "Обновлено",
+  },
+};
+
+const resolveInitialLanguage = (): Language => {
+  if (typeof window === "undefined") return "ru";
+  try {
+    const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    if (stored === "en" || stored === "ru") return stored;
+    const browserLang = navigator.language?.toLowerCase();
+    return browserLang?.startsWith("ru") ? "ru" : "en";
+  } catch (error) {
+    console.warn("Failed to resolve language, defaulting to RU", error);
+    return "ru";
+  }
+};
 
 type InitialState = {
   carPrices: number[];
@@ -310,6 +409,7 @@ const calculatorReducer = (state: CalculatorState, action: Action): CalculatorSt
 
 const Calculator = () => {
   const { toast } = useToast();
+  const [language, setLanguage] = useState<Language>(resolveInitialLanguage);
   const initialStateRef = useRef<InitialState | null>(null);
   if (!initialStateRef.current) {
     initialStateRef.current = readInitialState();
@@ -341,6 +441,7 @@ const Calculator = () => {
     lastValidRates,
     lastUpdatedAt,
   } = state;
+  const t = calculatorCopy[language];
   const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
   const initialFxSource: "live" | "fallback" | "manual" | "restored" =
     initialState.lastValidRates ? "restored" : "fallback";
@@ -474,6 +575,14 @@ const Calculator = () => {
     [],
   );
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    } catch (error) {
+      console.warn("Failed to persist language", error);
+    }
+  }, [language]);
+
   // Persist state to localStorage and URL
   useCalculatorPersistence({
     persistKey: PERSIST_KEY,
@@ -555,10 +664,10 @@ const Calculator = () => {
       setFxSource(rates.isFallback ? "fallback" : "live");
 
       toast({
-        title: rates.isFallback ? "Using fallback rates" : "Rates updated",
+        title: rates.isFallback ? t.ratesFallbackTitle : t.ratesUpdatedTitle,
         description: rates.isFallback
-          ? "Live rates were unavailable or invalid; using safe defaults."
-          : `$1 = ${new Intl.NumberFormat("ru-RU").format(Math.round(rates.krwPerUsd)).replace(/\u00A0/g, " ")} KRW | €1 = $${rates.usdPerEur.toLocaleString("ru-RU", { minimumFractionDigits: 4, maximumFractionDigits: 4 }).replace(/\u00A0/g, " ")}`,
+          ? t.ratesFallbackDescription
+          : t.ratesUpdatedDescription(rates.krwPerUsd, rates.usdPerEur),
         variant: rates.isFallback ? "destructive" : "default",
       });
     } finally {
@@ -567,7 +676,7 @@ const Calculator = () => {
         setIsLoadingRates(false);
       }
     }
-  }, [dispatchTracked, setLastUpdatedAtState, setLastValidRatesState, toast]);
+  }, [dispatchTracked, setLastUpdatedAtState, setLastValidRatesState, toast, t]);
 
   // Fetch latest exchange rates on initial load
   useEffect(() => {
@@ -646,8 +755,8 @@ const Calculator = () => {
     try {
       await navigator.clipboard.writeText(url);
       toast({
-        title: "Link copied",
-        description: "Share this configured calculator.",
+        title: t.shareSuccessTitle,
+        description: t.shareSuccessDescription,
       });
     } catch (error) {
       const textarea = document.createElement("textarea");
@@ -657,19 +766,19 @@ const Calculator = () => {
       document.execCommand("copy");
       document.body.removeChild(textarea);
       toast({
-        title: "Link copied",
-        description: "Clipboard access was limited; used fallback copy.",
+        title: t.shareSuccessTitle,
+        description: t.shareFallbackDescription,
       });
     }
   };
 
   const renderFxUpdatedLabel = () => {
-    if (!lastUpdatedAt) return "Not updated yet";
+    if (!lastUpdatedAt) return t.fxStatus.notUpdated;
     const diffMs = Date.now() - lastUpdatedAt;
     const minutes = Math.floor(diffMs / 60000);
-    if (minutes <= 0) return "Just now";
-    if (minutes === 1) return "Updated 1 min ago";
-    return `Updated ${minutes} min ago`;
+    if (minutes <= 0) return t.fxStatus.justNow;
+    if (minutes === 1) return t.fxStatus.minuteAgo;
+    return t.fxStatus.minutesAgo(minutes);
   };
 
   return (
@@ -685,11 +794,19 @@ const Calculator = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-base sm:text-xl font-bold text-foreground leading-tight break-words">
-                  Car Import Calculator
+                  {t.title}
                 </h1>
-                <p className="text-xs text-muted-foreground">Korea → Montenegro</p>
+                <p className="text-xs text-muted-foreground">{t.subtitle}</p>
               </div>
               <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-3 text-xs"
+                  onClick={() => setLanguage((prev) => (prev === "en" ? "ru" : "en"))}
+                >
+                  {language === "en" ? "RU" : "EN"}
+                </Button>
                 <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleCopyShareLink}>
                   <Share2 className="w-4 h-4" />
                 </Button>
@@ -741,6 +858,7 @@ const Calculator = () => {
           {/* Input Form - Single column layout */}
           <div className="space-y-5">
             <VehicleDetailsSection
+              language={language}
               scenario={scenario}
               setScenario={setScenarioTracked}
               numberOfCars={numberOfCars}
@@ -765,6 +883,7 @@ const Calculator = () => {
             />
 
             <CarPricesSection
+              language={language}
               numberOfCars={numberOfCars}
               carPrices={carPrices}
               setCarPrices={setCarPricesTracked}
@@ -792,7 +911,9 @@ const Calculator = () => {
             >
               <CalcIcon className="w-5 h-5" />
               <span>
-                {allPricesFilled ? 'Calculate' : `Enter ${numberOfCars - completedCars} more price${numberOfCars - completedCars > 1 ? 's' : ''}`}
+                {allPricesFilled
+                  ? t.calculateReady
+                  : t.calculateMissing(numberOfCars - completedCars)}
               </span>
             </Button>
           </div>
@@ -801,6 +922,7 @@ const Calculator = () => {
 
       {/* Results Bottom Sheet */}
       <ResultsBottomSheet
+        language={language}
         open={isResultsOpen}
         onOpenChange={setIsResultsOpen}
         results={results}
@@ -818,8 +940,8 @@ const Calculator = () => {
       <BottomSheet open={isRatesSheetOpen} onOpenChange={setIsRatesSheetOpen}>
         <BottomSheetHeader className="flex items-center justify-between pb-3">
           <div>
-            <p className="text-xs text-muted-foreground">Exchange Rates</p>
-            <h3 className="text-lg font-semibold text-foreground">KRW → USD & USD → EUR</h3>
+            <p className="text-xs text-muted-foreground">{t.ratesSheetTitle}</p>
+            <h3 className="text-lg font-semibold text-foreground">{t.ratesSheetSubtitle}</h3>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setIsRatesSheetOpen(false)}>
             <X className="w-5 h-5" />
@@ -828,6 +950,7 @@ const Calculator = () => {
         <BottomSheetBody className="pt-2">
           <div onTouchStart={handleRatesTouchStart} onTouchEnd={handleRatesTouchEnd}>
             <CurrencyRatesSection
+              language={language}
               autoUpdateFX={autoUpdateFX}
               setAutoUpdateFX={setAutoUpdateFXTracked}
               isLoadingRates={isLoadingRates}

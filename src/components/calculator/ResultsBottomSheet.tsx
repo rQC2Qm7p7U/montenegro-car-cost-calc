@@ -27,8 +27,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { exportCalculationPDF } from "@/utils/pdfExport";
 import { toast } from "@/hooks/use-toast";
+import type { Language } from "@/types/language";
 
 interface ResultsBottomSheetProps {
+  language: Language;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   results: Results;
@@ -44,6 +46,7 @@ interface ResultsBottomSheetProps {
 }
 
 export const ResultsBottomSheet = ({
+  language,
   open,
   onOpenChange,
   results,
@@ -58,6 +61,7 @@ export const ResultsBottomSheet = ({
   onScenarioChange,
 }: ResultsBottomSheetProps) => {
   const [openInfoKey, setOpenInfoKey] = useState<string | null>(null);
+  const isRu = language === "ru";
   const formatNumber = (value: number, options?: Intl.NumberFormatOptions) =>
     new Intl.NumberFormat("ru-RU", options).format(value).replace(/\u00A0/g, " ");
   const formatEUR = (value: number) => formatNumber(Math.round(value));
@@ -105,6 +109,7 @@ export const ResultsBottomSheet = ({
   const handleExportPDF = () => {
     try {
       exportCalculationPDF({
+        language,
         results,
         numberOfCars,
         scenario,
@@ -115,13 +120,13 @@ export const ResultsBottomSheet = ({
         containerType,
       });
       toast({
-        title: "PDF Exported",
-        description: "Calculation report has been downloaded.",
+        title: isRu ? "PDF сохранен" : "PDF Exported",
+        description: isRu ? "Отчет по расчету скачан." : "Calculation report has been downloaded.",
       });
     } catch (error) {
       toast({
-        title: "Export Failed",
-        description: "Could not generate PDF. Please try again.",
+        title: isRu ? "Не удалось сохранить" : "Export Failed",
+        description: isRu ? "Попробуйте еще раз." : "Could not generate PDF. Please try again.",
         variant: "destructive",
       });
     }
@@ -135,9 +140,11 @@ export const ResultsBottomSheet = ({
             <Receipt className="w-5 h-5 text-primary-foreground" />
           </div>
           <div className="min-w-0">
-            <h2 className="text-lg font-bold text-foreground truncate">Import Cost Analysis</h2>
+            <h2 className="text-lg font-bold text-foreground truncate">
+              {isRu ? "Анализ стоимости импорта" : "Import Cost Analysis"}
+            </h2>
             <p className="text-xs text-muted-foreground">
-              {containerType} Container • {carsWithPrices.length} vehicle{carsWithPrices.length !== 1 ? 's' : ''}
+              {containerType} {isRu ? "контейнер" : "Container"} • {carsWithPrices.length} {isRu ? "авто" : `vehicle${carsWithPrices.length !== 1 ? "s" : ""}`}
             </p>
           </div>
         </div>
@@ -150,7 +157,9 @@ export const ResultsBottomSheet = ({
             <div className="flex items-center justify-between mb-3 gap-3">
               <div className="flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Physical vs Company</h3>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {isRu ? "Физлицо и компания" : "Physical vs Company"}
+                </h3>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -159,7 +168,7 @@ export const ResultsBottomSheet = ({
                   onClick={() => onScenarioChange("physical")}
                   className="h-8"
                 >
-                  Physical
+                  {isRu ? "Физ. лицо" : "Physical"}
                 </Button>
                 <Button
                   size="sm"
@@ -167,7 +176,7 @@ export const ResultsBottomSheet = ({
                   onClick={() => onScenarioChange("company")}
                   className="h-8"
                 >
-                  Company
+                  {isRu ? "Компания" : "Company"}
                 </Button>
               </div>
             </div>
@@ -176,33 +185,41 @@ export const ResultsBottomSheet = ({
               {[
                 {
                   key: "scenario-physical",
-                  title: "Physical",
+                  title: isRu ? "Физ. лицо" : "Physical",
                   colorClasses: "bg-muted/40 border border-border/50",
                   value: `€${formatEUR(physicalTotal)}`,
-                  note: "With VAT",
-                  tip: `${carsWithPrices.length} cars × €${formatEURWithCents(avgFinalCost)} avg = €${formatEURWithCents(physicalTotal)}`,
+                  note: isRu ? "С учетом НДС" : "With VAT",
+                  tip: isRu
+                    ? `${carsWithPrices.length} авто × €${formatEURWithCents(avgFinalCost)} = €${formatEURWithCents(physicalTotal)}`
+                    : `${carsWithPrices.length} cars × €${formatEURWithCents(avgFinalCost)} avg = €${formatEURWithCents(physicalTotal)}`,
                 },
                 {
                   key: "scenario-company",
-                  title: "Company",
+                  title: isRu ? "Компания" : "Company",
                   colorClasses: "bg-green-500/10 border border-green-500/30",
                   value: `€${formatEUR(companyNet)}`,
-                  note: "VAT refund applied",
-                  tip: `Physical €${formatEURWithCents(physicalTotal)} − VAT refund €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`,
+                  note: isRu ? "С возвратом НДС" : "VAT refund applied",
+                  tip: isRu
+                    ? `Физлицо €${formatEURWithCents(physicalTotal)} − возврат НДС €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`
+                    : `Physical €${formatEURWithCents(physicalTotal)} − VAT refund €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`,
                 },
                 {
                   key: "scenario-savings",
-                  title: "Savings",
+                  title: isRu ? "Экономия" : "Savings",
                   colorClasses: "bg-primary/5 border border-primary/30",
                   value: `€${formatEUR(Math.max(0, vatRefundTotal))}`,
-                  note: "Refunded VAT",
-                  tip: `VAT refund per car €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`,
+                  note: isRu ? "Возврат НДС" : "Refunded VAT",
+                  tip: isRu
+                    ? `Возврат НДС за авто €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`
+                    : `VAT refund per car €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`,
                 },
               ].map((item) => {
                 const isOpen = openInfoKey === item.key;
                 const content = (
                   <div>
-                    <p className="font-semibold mb-1">{item.title} calculation</p>
+                    <p className="font-semibold mb-1">
+                      {isRu ? `Расчет: ${item.title}` : `${item.title} calculation`}
+                    </p>
                     <p className="text-muted-foreground leading-snug">{item.tip}</p>
                   </div>
                 );
@@ -216,15 +233,17 @@ export const ResultsBottomSheet = ({
                             type="button"
                             className={`p-3 rounded-lg text-left w-full cursor-help transition-colors ${item.colorClasses}`}
                             onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
-                            aria-label={`${item.title} calculation details`}
+                            aria-label={
+                              isRu ? `${item.title}: детали расчета` : `${item.title} calculation details`
+                            }
                           >
-                            <p className={`text-[11px] uppercase tracking-wide mb-1 ${item.title === "Company" ? "text-green-700 dark:text-green-400" : item.title === "Savings" ? "text-primary" : "text-muted-foreground"}`}>
+                            <p className={`text-[11px] uppercase tracking-wide mb-1 ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : item.key === "scenario-savings" ? "text-primary" : "text-muted-foreground"}`}>
                               {item.title}
                             </p>
-                            <p className={`text-xl font-bold ${item.title === "Company" ? "text-green-700 dark:text-green-400" : item.title === "Savings" ? "text-primary" : "text-foreground"}`}>
+                            <p className={`text-xl font-bold ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : item.key === "scenario-savings" ? "text-primary" : "text-foreground"}`}>
                               {item.value}
                             </p>
-                            <p className={`text-[11px] ${item.title === "Company" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
+                            <p className={`text-[11px] ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
                               {item.note}
                             </p>
                           </button>
@@ -249,7 +268,7 @@ export const ResultsBottomSheet = ({
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-medium opacity-90 uppercase tracking-wider">
-                    Total Import Cost
+                    {isRu ? "ИТОГО ИМПОРТ" : "Total Import Cost"}
                   </p>
                   <p className="text-3xl sm:text-4xl font-bold mt-1 truncate">
                     €{formatEUR(results.totalFinalCost)}
@@ -262,15 +281,21 @@ export const ResultsBottomSheet = ({
             <div className="p-3 bg-gradient-to-b from-primary/5 to-transparent">
               <div className="grid grid-cols-3 gap-2 text-center">
                 <div className="p-2 rounded-lg bg-background/80">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Vehicles</p>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">
+                    {isRu ? "Авто" : "Vehicles"}
+                  </p>
                   <p className="text-base font-bold text-foreground">{carsWithPrices.length}</p>
                 </div>
                 <div className="p-2 rounded-lg bg-background/80">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Avg/Car</p>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">
+                    {isRu ? "Среднее/авто" : "Avg/Car"}
+                  </p>
                   <p className="text-base font-bold text-foreground">€{formatEUR(avgFinalCost)}</p>
                 </div>
                 <div className="p-2 rounded-lg bg-background/80">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Taxes</p>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">
+                    {isRu ? "Налоги" : "Taxes"}
+                  </p>
                   <p className="text-base font-bold text-foreground">€{formatEUR(results.totalCustoms + results.totalVAT)}</p>
                 </div>
               </div>
@@ -281,8 +306,12 @@ export const ResultsBottomSheet = ({
                     <div className="flex items-center gap-2 min-w-0">
                       <Building2 className="w-4 h-4 text-green-600 dark:text-green-400 shrink-0" />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">Company</p>
-                        <p className="text-[10px] text-muted-foreground">VAT refund</p>
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {isRu ? "Компания" : "Company"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {isRu ? "Возврат НДС" : "VAT refund"}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
@@ -290,7 +319,7 @@ export const ResultsBottomSheet = ({
                         €{formatEUR(results.totalNetCostForCompany)}
                       </p>
                       <p className="text-[10px] text-green-600 dark:text-green-400">
-                        Save €{formatEUR(results.totalVATRefund)}
+                        {isRu ? "Экономия" : "Save"} €{formatEUR(results.totalVATRefund)}
                       </p>
                     </div>
                   </div>
@@ -304,7 +333,7 @@ export const ResultsBottomSheet = ({
             <div className="flex items-center gap-2 mb-2">
               <FileText className="w-4 h-4 text-primary" />
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                Cost Breakdown
+                {isRu ? "Структура расходов" : "Cost Breakdown"}
               </h3>
             </div>
             
@@ -313,24 +342,30 @@ export const ResultsBottomSheet = ({
                 {[
                   {
                     key: "breakdown-vehicles",
-                    label: `Vehicles (${carsWithPrices.length}×)`,
+                    label: `${isRu ? "Авто" : "Vehicles"} (${carsWithPrices.length}×)`,
                     icon: <Car className="w-4 h-4 text-muted-foreground shrink-0" />,
                     value: `€${formatEUR(results.totalCarPrices)}`,
-                    hint: `${carsWithPrices.length} cars × €${formatEURWithCents(avgCarPurchase)} avg = €${formatEURWithCents(results.totalCarPrices)}`,
+                    hint: isRu
+                      ? `${carsWithPrices.length} авто × €${formatEURWithCents(avgCarPurchase)} = €${formatEURWithCents(results.totalCarPrices)}`
+                      : `${carsWithPrices.length} cars × €${formatEURWithCents(avgCarPurchase)} avg = €${formatEURWithCents(results.totalCarPrices)}`,
                   },
                   {
                     key: "breakdown-freight",
-                    label: `Freight (${containerType})`,
+                    label: `${isRu ? "Фрахт" : "Freight"} (${containerType})`,
                     icon: <Ship className="w-4 h-4 text-muted-foreground shrink-0" />,
                     value: `€${formatEUR(results.freightPerContainerEUR)}`,
                     sub: `$${formatNumber(containerInfo.freightUSD)}`,
-                    hint: `$${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR = €${formatEURWithCents(results.freightPerContainerEUR)}`,
+                    hint: isRu
+                      ? `$${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR = €${formatEURWithCents(results.freightPerContainerEUR)}`
+                      : `$${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR = €${formatEURWithCents(results.freightPerContainerEUR)}`,
                   },
                 ].map((item) => {
                   const isOpen = openInfoKey === item.key;
                   const content = (
                     <div>
-                      <p className="font-semibold mb-1">{item.label} calculation</p>
+                      <p className="font-semibold mb-1">
+                        {isRu ? `Расчет: ${item.label}` : `${item.label} calculation`}
+                      </p>
                       <p className="text-muted-foreground leading-snug">{item.hint}</p>
                     </div>
                   );
@@ -341,11 +376,13 @@ export const ResultsBottomSheet = ({
                         <TooltipTrigger asChild>
                           <PopoverTrigger asChild>
                             <button
-                              type="button"
-                              className="p-3 flex items-center justify-between gap-2 w-full text-left cursor-help"
-                              onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
-                              aria-label={`${item.label} calculation details`}
-                            >
+                            type="button"
+                            className="p-3 flex items-center justify-between gap-2 w-full text-left cursor-help"
+                            onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
+                            aria-label={
+                              isRu ? `${item.label}: детали расчета` : `${item.label} calculation details`
+                            }
+                          >
                               <div className="flex items-center gap-2 min-w-0">
                                 {item.icon}
                                 <div className="min-w-0">
@@ -375,30 +412,38 @@ export const ResultsBottomSheet = ({
                 {[
                   {
                     key: "breakdown-cif",
-                    label: "CIF Value",
+                    label: isRu ? "CIF стоимость" : "CIF Value",
                     highlight: true,
                     value: `€${formatEUR(results.totalCIF)}`,
-                    tip: `Vehicles €${formatEURWithCents(results.totalCarPrices)} + Freight €${formatEURWithCents(results.freightPerContainerEUR)} = €${formatEURWithCents(results.totalCIF)}`,
+                    tip: isRu
+                      ? `Авто €${formatEURWithCents(results.totalCarPrices)} + Фрахт €${formatEURWithCents(results.freightPerContainerEUR)} = €${formatEURWithCents(results.totalCIF)}`
+                      : `Vehicles €${formatEURWithCents(results.totalCarPrices)} + Freight €${formatEURWithCents(results.freightPerContainerEUR)} = €${formatEURWithCents(results.totalCIF)}`,
                   },
                   {
                     key: "breakdown-customs",
-                    label: `Customs ${customsDuty}%`,
+                    label: `${isRu ? "Пошлина" : "Customs"} ${customsDuty}%`,
                     icon: <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />,
                     value: `€${formatEUR(results.totalCustoms)}`,
-                    tip: `CIF €${formatEURWithCents(results.totalCIF)} × ${customsDuty}% = €${formatEURWithCents(results.totalCustoms)}`,
+                    tip: isRu
+                      ? `CIF €${formatEURWithCents(results.totalCIF)} × ${customsDuty}% = €${formatEURWithCents(results.totalCustoms)}`
+                      : `CIF €${formatEURWithCents(results.totalCIF)} × ${customsDuty}% = €${formatEURWithCents(results.totalCustoms)}`,
                   },
                   {
                     key: "breakdown-vat",
-                    label: `VAT ${vat}%`,
+                    label: `${isRu ? "НДС" : "VAT"} ${vat}%`,
                     icon: <Banknote className="w-4 h-4 text-muted-foreground shrink-0" />,
                     value: `€${formatEUR(results.totalVAT)}`,
-                    tip: `(CIF €${formatEURWithCents(results.totalCIF)} + Customs €${formatEURWithCents(results.totalCustoms)}) × ${vat}% = €${formatEURWithCents(results.totalVAT)}`,
+                    tip: isRu
+                      ? `(CIF €${formatEURWithCents(results.totalCIF)} + Пошлина €${formatEURWithCents(results.totalCustoms)}) × ${vat}% = €${formatEURWithCents(results.totalVAT)}`
+                      : `(CIF €${formatEURWithCents(results.totalCIF)} + Customs €${formatEURWithCents(results.totalCustoms)}) × ${vat}% = €${formatEURWithCents(results.totalVAT)}`,
                   },
                 ].map((item) => {
                   const isOpen = openInfoKey === item.key;
                   const content = (
                     <div>
-                      <p className="font-semibold mb-1">{item.label} calculation</p>
+                      <p className="font-semibold mb-1">
+                        {isRu ? `Расчет: ${item.label}` : `${item.label} calculation`}
+                      </p>
                       <p className="text-muted-foreground leading-snug">{item.tip}</p>
                     </div>
                   );
@@ -413,7 +458,9 @@ export const ResultsBottomSheet = ({
                                 type="button"
                                 className={`p-3 flex items-center justify-between gap-2 w-full text-left ${item.highlight ? "bg-muted/30 font-medium" : ""}`}
                                 onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
-                                aria-label={`${item.label} calculation details`}
+                                aria-label={
+                                  isRu ? `${item.label}: детали расчета` : `${item.label} calculation details`
+                                }
                               >
                                 <div className="flex items-center gap-2 min-w-0">
                                   {item.icon}
@@ -441,38 +488,38 @@ export const ResultsBottomSheet = ({
               {/* Services Section */}
               <div className="border-t border-dashed border-border">
                 <div className="p-2 bg-muted/30 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                  Services & Fees
+                  {isRu ? "Сервисы и сборы" : "Services & Fees"}
                 </div>
                 <div className="grid grid-cols-2 gap-px bg-border/30">
                   {([
                     {
                       key: "service-port",
-                      label: "Port & Agent",
+                      label: isRu ? "Порт и агент" : "Port & Agent",
                       perCar: results.portAgentFeePerCar,
                       total: totalPortAgent,
                     },
                     {
                       key: "service-speditor",
-                      label: "Speditor",
+                      label: isRu ? "Экспедитор" : "Speditor",
                       perCar: results.speditorFee,
                       total: totalSpeditor,
                     },
                     {
                       key: "service-translation",
-                      label: "Translation",
+                      label: isRu ? "Перевод" : "Translation",
                       perCar: results.translationPerCar,
                       total: totalTranslation,
                     },
                     {
                       key: "service-homologation",
-                      label: "Homologation",
+                      label: isRu ? "Гомологация" : "Homologation",
                       perCar: perCarHomologation,
                       total: totalHomologation,
                     },
                     results.carResults[0]?.miscellaneous > 0
                       ? ({
                           key: "service-misc",
-                          label: "Miscellaneous",
+                          label: isRu ? "Прочее" : "Miscellaneous",
                           perCar: perCarMisc,
                           total: totalMisc,
                           fullRow: true,
@@ -492,9 +539,13 @@ export const ResultsBottomSheet = ({
                     const isOpen = openInfoKey === service.key;
                     const content = (
                       <div>
-                        <p className="font-semibold mb-1">{service.label} calculation</p>
+                        <p className="font-semibold mb-1">
+                          {isRu ? `${service.label}: расчет` : `${service.label} calculation`}
+                        </p>
                         <p className="text-muted-foreground leading-snug">
-                          €{formatEURWithCents(service.perCar)} × {numberOfCars} cars = €{formatEURWithCents(service.total)}
+                          {isRu
+                            ? `€${formatEURWithCents(service.perCar)} × ${numberOfCars} авто = €${formatEURWithCents(service.total)}`
+                            : `€${formatEURWithCents(service.perCar)} × ${numberOfCars} cars = €${formatEURWithCents(service.total)}`}
                         </p>
                       </div>
                     );
@@ -508,7 +559,11 @@ export const ResultsBottomSheet = ({
                                 type="button"
                                 className={`p-2 bg-background flex justify-between items-center text-xs cursor-help w-full text-left ${service.fullRow ? "col-span-2" : ""}`}
                                 onClick={() => setOpenInfoKey(isOpen ? null : service.key)}
-                                aria-label={`${service.label} calculation details`}
+                                aria-label={
+                                  isRu
+                                    ? `${service.label}: детали расчета`
+                                    : `${service.label} calculation details`
+                                }
                               >
                                 <span className="text-muted-foreground truncate">{service.label}</span>
                                 <span className="shrink-0 ml-1">€{formatEUR(service.total)}</span>
@@ -541,26 +596,36 @@ export const ResultsBottomSheet = ({
                           type="button"
                           className="w-full text-left p-3 flex items-center justify-between gap-2 bg-primary/5 hover:bg-primary/10 transition-colors cursor-help"
                           onClick={() => setOpenInfoKey(openInfoKey === "mne-expenses" ? null : "mne-expenses")}
-                          aria-label="MNE expenses calculation details"
+                          aria-label={isRu ? "Расходы в ЧГ: детали" : "MNE expenses calculation details"}
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <Info className="w-4 h-4 text-primary shrink-0" />
-                            <span className="text-sm font-medium truncate">MNE expenses</span>
+                            <span className="text-sm font-medium truncate">
+                              {isRu ? "Расходы в ЧГ" : "MNE expenses"}
+                            </span>
                           </div>
                           <span className="font-bold text-primary shrink-0">€{formatEUR(mneExpenses)}</span>
                         </button>
                       </PopoverTrigger>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-[260px] text-xs hidden sm:block">
-                      <p className="font-semibold mb-1">MNE expenses calculation</p>
+                      <p className="font-semibold mb-1">
+                        {isRu ? "Расчет расходов в ЧГ" : "MNE expenses calculation"}
+                      </p>
                       <p className="text-muted-foreground leading-snug">
-                        Total €{formatEURWithCents(results.totalFinalCost)} − Vehicles €{formatEURWithCents(results.totalCarPrices)} = €{formatEURWithCents(mneExpenses)}
+                        {isRu
+                          ? `Итого €${formatEURWithCents(results.totalFinalCost)} − Авто €${formatEURWithCents(results.totalCarPrices)} = €${formatEURWithCents(mneExpenses)}`
+                          : `Total €${formatEURWithCents(results.totalFinalCost)} − Vehicles €${formatEURWithCents(results.totalCarPrices)} = €${formatEURWithCents(mneExpenses)}`}
                       </p>
                     </TooltipContent>
                     <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
-                      <p className="font-semibold mb-1">MNE expenses calculation</p>
+                      <p className="font-semibold mb-1">
+                        {isRu ? "Расчет расходов в ЧГ" : "MNE expenses calculation"}
+                      </p>
                       <p className="text-muted-foreground leading-snug">
-                        Total €{formatEURWithCents(results.totalFinalCost)} − Vehicles €{formatEURWithCents(results.totalCarPrices)} = €{formatEURWithCents(mneExpenses)}
+                        {isRu
+                          ? `Итого €${formatEURWithCents(results.totalFinalCost)} − Авто €${formatEURWithCents(results.totalCarPrices)} = €${formatEURWithCents(mneExpenses)}`
+                          : `Total €${formatEURWithCents(results.totalFinalCost)} − Vehicles €${formatEURWithCents(results.totalCarPrices)} = €${formatEURWithCents(mneExpenses)}`}
                       </p>
                     </PopoverContent>
                   </Popover>
@@ -571,7 +636,7 @@ export const ResultsBottomSheet = ({
               <div className="p-3 bg-primary/10 border-t-2 border-primary/30 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                  <span className="font-bold text-base">TOTAL</span>
+                  <span className="font-bold text-base">{isRu ? "ИТОГО" : "TOTAL"}</span>
                 </div>
                 <span className="text-xl font-bold text-primary">€{formatEUR(results.totalFinalCost)}</span>
               </div>
@@ -583,7 +648,7 @@ export const ResultsBottomSheet = ({
             <div className="flex items-center gap-2 mb-2">
               <TrendingUp className="w-4 h-4 text-primary" />
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">
-                Per Vehicle
+                {isRu ? "По каждому авто" : "Per Vehicle"}
               </h3>
             </div>
 
@@ -596,9 +661,11 @@ export const ResultsBottomSheet = ({
                         {car.carIndex}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm text-foreground">Car #{car.carIndex}</p>
+                        <p className="font-semibold text-sm text-foreground">
+                          {isRu ? `Авто №${car.carIndex}` : `Car #${car.carIndex}`}
+                        </p>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          Purchase: €{formatEUR(car.carPrice)}
+                          {isRu ? "Покупка" : "Purchase"}: €{formatEUR(car.carPrice)}
                         </p>
                       </div>
                     </div>
@@ -612,46 +679,60 @@ export const ResultsBottomSheet = ({
                       {[
                         {
                           key: "freight",
-                          label: "Freight",
+                          label: isRu ? "Фрахт" : "Freight",
                           value: car.freightPerCar,
-                          tip: `($${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
+                          tip: isRu
+                            ? `($${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR) ÷ ${carsCount} авто = €${formatEURWithCents(car.freightPerCar)}`
+                            : `($${formatNumber(containerInfo.freightUSD)} ÷ ${formatNumber(usdPerEurRate, { minimumFractionDigits: 4, maximumFractionDigits: 4 })} USD/EUR) ÷ ${carsCount} cars = €${formatEURWithCents(car.freightPerCar)}`,
                         },
                         {
                           key: "customs",
-                          label: "Customs",
+                          label: isRu ? "Пошлина" : "Customs",
                           value: car.customs,
-                          tip: `CIF €${formatEURWithCents(car.cif)} × ${customsDuty}% duty = €${formatEURWithCents(car.customs)}`,
+                          tip: isRu
+                            ? `CIF €${formatEURWithCents(car.cif)} × ${customsDuty}% = €${formatEURWithCents(car.customs)}`
+                            : `CIF €${formatEURWithCents(car.cif)} × ${customsDuty}% duty = €${formatEURWithCents(car.customs)}`,
                         },
                         {
                           key: "vat",
-                          label: "VAT",
+                          label: isRu ? "НДС" : "VAT",
                           value: car.vatAmount,
-                          tip: `(CIF €${formatEURWithCents(car.cif)} + Customs €${formatEURWithCents(car.customs)}) × ${vat}% VAT = €${formatEURWithCents(car.vatAmount)}`,
+                          tip: isRu
+                            ? `(CIF €${formatEURWithCents(car.cif)} + Пошлина €${formatEURWithCents(car.customs)}) × ${vat}% НДС = €${formatEURWithCents(car.vatAmount)}`
+                            : `(CIF €${formatEURWithCents(car.cif)} + Customs €${formatEURWithCents(car.customs)}) × ${vat}% VAT = €${formatEURWithCents(car.vatAmount)}`,
                         },
                         {
                           key: "services",
-                          label: "Services",
+                          label: isRu ? "Сервисы" : "Services",
                           value: car.portAgentFeePerCar + car.translationPerCar + car.speditorFee,
-                          tip: `Port & agent €${formatEURWithCents(car.portAgentFeePerCar)} + Translation €${formatEURWithCents(car.translationPerCar)} + Speditor €${formatEURWithCents(car.speditorFee)}`,
+                          tip: isRu
+                            ? `Порт и агент €${formatEURWithCents(car.portAgentFeePerCar)} + Перевод €${formatEURWithCents(car.translationPerCar)} + Экспедитор €${formatEURWithCents(car.speditorFee)}`
+                            : `Port & agent €${formatEURWithCents(car.portAgentFeePerCar)} + Translation €${formatEURWithCents(car.translationPerCar)} + Speditor €${formatEURWithCents(car.speditorFee)}`,
                         },
                         {
                           key: "homologation",
-                          label: "Homolog.",
+                          label: isRu ? "Гомол." : "Homolog.",
                           value: car.homologationFee,
-                          tip: `Homologation fee per car: €${formatEURWithCents(car.homologationFee)}`,
+                          tip: isRu
+                            ? `Гомологация за авто: €${formatEURWithCents(car.homologationFee)}`
+                            : `Homologation fee per car: €${formatEURWithCents(car.homologationFee)}`,
                         },
                         {
                           key: "misc",
-                          label: "Misc",
+                          label: isRu ? "Прочее" : "Misc",
                           value: car.miscellaneous,
-                          tip: `Additional per-car costs you entered: €${formatEURWithCents(car.miscellaneous)}`,
+                          tip: isRu
+                            ? `Дополнительные расходы: €${formatEURWithCents(car.miscellaneous)}`
+                            : `Additional per-car costs you entered: €${formatEURWithCents(car.miscellaneous)}`,
                         },
                       ].map((item) => {
                         const infoKey = `${car.carIndex}-${item.key}`;
                         const isOpen = openInfoKey === infoKey;
                         const explanation = (
                           <div>
-                            <p className="font-semibold mb-1">{item.label} calculation</p>
+                            <p className="font-semibold mb-1">
+                              {isRu ? `Расчет: ${item.label}` : `${item.label} calculation`}
+                            </p>
                             <p className="text-muted-foreground leading-snug">{item.tip}</p>
                           </div>
                         );
@@ -668,7 +749,11 @@ export const ResultsBottomSheet = ({
                                     type="button"
                                     className="p-2 rounded bg-muted/30 text-center cursor-help w-full h-full"
                                     onClick={() => setOpenInfoKey(isOpen ? null : infoKey)}
-                                    aria-label={`${item.label} calculation details`}
+                                    aria-label={
+                                      isRu
+                                        ? `${item.label}: детали расчета`
+                                        : `${item.label} calculation details`
+                                    }
                                   >
                                     <p className="text-[10px] text-muted-foreground">{item.label}</p>
                                     <p className="font-semibold">€{formatEUR(item.value)}</p>
@@ -690,10 +775,10 @@ export const ResultsBottomSheet = ({
                     {scenario === "company" && (
                       <div className="mt-2 p-2 rounded bg-green-500/10 border border-green-500/20 flex items-center justify-between text-xs">
                         <span className="text-green-700 dark:text-green-400 font-medium">
-                          VAT Refund: €{formatEUR(car.vatRefund)}
+                          {isRu ? "Возврат НДС" : "VAT Refund"}: €{formatEUR(car.vatRefund)}
                         </span>
                         <span className="font-bold text-green-600 dark:text-green-400">
-                          Net: €{formatEUR(car.netCostForCompany)}
+                          {isRu ? "Итог" : "Net"}: €{formatEUR(car.netCostForCompany)}
                         </span>
                       </div>
                     )}
@@ -708,26 +793,34 @@ export const ResultsBottomSheet = ({
             <div className="flex items-center gap-2 mb-2">
               <Info className="w-4 h-4 text-muted-foreground" />
               <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                Parameters
+                {isRu ? "Параметры" : "Parameters"}
               </h3>
             </div>
             
             <Card className="p-3 bg-muted/20 border-border/50">
               <div className="grid grid-cols-4 gap-2 text-center text-xs">
                 <div className="p-1.5 bg-background/60 rounded">
-                  <p className="text-[10px] text-muted-foreground">Container</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isRu ? "Контейнер" : "Container"}
+                  </p>
                   <p className="font-semibold">{containerType}</p>
                 </div>
                 <div className="p-1.5 bg-background/60 rounded">
-                  <p className="text-[10px] text-muted-foreground">Customs</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isRu ? "Пошлина" : "Customs"}
+                  </p>
                   <p className="font-semibold">{customsDuty}%</p>
                 </div>
                 <div className="p-1.5 bg-background/60 rounded">
-                  <p className="text-[10px] text-muted-foreground">VAT</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isRu ? "НДС" : "VAT"}
+                  </p>
                   <p className="font-semibold">{vat}%</p>
                 </div>
                 <div className="p-1.5 bg-background/60 rounded">
-                  <p className="text-[10px] text-muted-foreground">Type</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isRu ? "Тип" : "Type"}
+                  </p>
                   <p className="font-semibold capitalize">{scenario}</p>
                 </div>
               </div>
@@ -752,14 +845,14 @@ export const ResultsBottomSheet = ({
             className="flex-1 h-11 gap-2"
           >
             <RefreshCcw className="w-4 h-4" />
-            Edit
+            {isRu ? "Изменить" : "Edit"}
           </Button>
           <Button 
             onClick={handleExportPDF}
             className="flex-1 h-11 gap-2 bg-primary hover:bg-primary/90"
           >
             <Download className="w-4 h-4" />
-            Export PDF
+            {isRu ? "Скачать PDF" : "Export PDF"}
           </Button>
         </div>
       </BottomSheetFooter>

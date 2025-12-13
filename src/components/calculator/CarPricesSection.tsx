@@ -9,8 +9,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Copy, Info, Car, CheckCircle2 } from "lucide-react";
 import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/currency";
 import type { CalculationResults } from "@/types/calculator";
+import type { Language } from "@/types/language";
 
 interface CarPricesSectionProps {
+  language: Language;
   numberOfCars: number;
   carPrices: number[];
   setCarPrices: (value: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => void;
@@ -18,6 +20,53 @@ interface CarPricesSectionProps {
   usdPerEurRate: number;
   results: CalculationResults;
 }
+
+const copy: Record<
+  Language,
+  {
+    title: string;
+    entered: (completed: number, total: number) => string;
+    formatHint: string;
+    rawKrwLabel: string;
+    rawKrwInfo: string;
+    applyAll: string;
+    carLabel: (index: number) => string;
+    approxWithTaxes: string;
+    containerSplit: string;
+    eurPlaceholder: string;
+    krwPlaceholder: string;
+    krwRawPlaceholder: string;
+  }
+> = {
+  en: {
+    title: "Vehicle Prices",
+    entered: (completed, total) => `${completed}/${total} entered`,
+    formatHint: "Expected format: 12 345 €",
+    rawKrwLabel: "Full KRW (no 만원)",
+    rawKrwInfo: "Korean shorthand: '만원' = ×10,000\nExample: 2 280 → 22 800 000 KRW",
+    applyAll: "Apply Car #1 price to all",
+    carLabel: (index) => `Car #${index}`,
+    approxWithTaxes: "with freight & taxes",
+    containerSplit: "Container costs are split equally between vehicles",
+    eurPlaceholder: "e.g. 12 500",
+    krwPlaceholder: "e.g. 2 280",
+    krwRawPlaceholder: "e.g. 22 800 000",
+  },
+  ru: {
+    title: "Стоимость автомобилей",
+    entered: (completed, total) => `${completed}/${total} заполнено`,
+    formatHint: "Формат: 12 345 €",
+    rawKrwLabel: "Полная сумма KRW (без 만원)",
+    rawKrwInfo: "Короткая запись в Корее: '만원' = ×10 000\nПример: 2 280 → 22 800 000 KRW",
+    applyAll: "Применить цену авто №1 ко всем",
+    carLabel: (index) => `Авто №${index}`,
+    approxWithTaxes: "с учетом доставки и налогов",
+    containerSplit: "Стоимость контейнера делится поровну между авто",
+    eurPlaceholder: "Например: 12 500",
+    krwPlaceholder: "Например: 2 280",
+    krwRawPlaceholder: "Например: 22 800 000",
+  },
+};
 
 type CurrencyMode = "eur" | "krw";
 
@@ -50,6 +99,7 @@ const formatKrwFromEur = (eur: number, krwPerUsdRate: number, usdPerEurRate: num
 };
 
 export const CarPricesSection = ({
+  language,
   numberOfCars,
   carPrices,
   setCarPrices,
@@ -57,6 +107,7 @@ export const CarPricesSection = ({
   usdPerEurRate,
   results,
 }: CarPricesSectionProps) => {
+  const t = copy[language];
   const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("eur");
   const [rawKRWMode, setRawKRWMode] = useState(false);
   const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
@@ -235,13 +286,13 @@ export const CarPricesSection = ({
         </div>
         <div className="flex-1">
           <h2 className="text-lg font-semibold text-foreground">
-            Vehicle Prices
+            {t.title}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {completedCount}/{numberOfCars} entered
+            {t.entered(completedCount, numberOfCars)}
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            Expected format: 12 345 €
+            {t.formatHint}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -273,7 +324,7 @@ export const CarPricesSection = ({
             onCheckedChange={setRawKRWMode}
           />
           <Label htmlFor="rawKRWMode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-            Full KRW (no 만원)
+            {t.rawKrwLabel}
           </Label>
           <TooltipProvider>
             <Tooltip>
@@ -281,9 +332,8 @@ export const CarPricesSection = ({
                 <Info className="w-4 h-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="left">
-                <p className="max-w-xs text-sm">
-                  Korean shorthand: '만원' = ×10,000<br />
-                  Example: 2 280 → 22 800 000 KRW
+                <p className="max-w-xs text-sm whitespace-pre-line">
+                  {t.rawKrwInfo}
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -300,7 +350,7 @@ export const CarPricesSection = ({
           className="w-full mb-4 gap-2 h-9"
         >
           <Copy className="w-4 h-4" />
-          Apply Car #1 price to all
+          {t.applyAll}
         </Button>
       )}
 
@@ -320,7 +370,7 @@ export const CarPricesSection = ({
             >
               <div className="flex items-center justify-between mb-2">
                 <Label htmlFor={`carPrice${index}`} className="text-sm font-medium flex items-center gap-2">
-                  Car #{index + 1}
+                  {t.carLabel(index + 1)}
                   {hasPrice && (
                     <CheckCircle2 className="w-4 h-4 text-primary" />
                   )}
@@ -339,12 +389,12 @@ export const CarPricesSection = ({
                     value={eurInputValues[index] ?? ""}
                     onChange={(e) => handlePriceChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder="Например: 12 500"
+                    placeholder={t.eurPlaceholder}
                     className="input-focus-ring bg-background/50"
                   />
                   {preview && preview.carPrice > 0 && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      ≈ €{formatEUR(preview.finalCost)} with freight & taxes
+                      ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
                     </p>
                   )}
                 </>
@@ -356,7 +406,7 @@ export const CarPricesSection = ({
                     value={krwInputValues[index] || ""}
                     onChange={(e) => handleKRWChange(index, e.target.value)}
                     onFocus={(e) => e.target.select()}
-                    placeholder={rawKRWMode ? "Например: 22 800 000" : "Например: 2 280"}
+                    placeholder={rawKRWMode ? t.krwRawPlaceholder : t.krwPlaceholder}
                     className="input-focus-ring bg-background/50"
                   />
                   {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (
@@ -371,7 +421,7 @@ export const CarPricesSection = ({
                       </div>
                       {preview && preview.carPrice > 0 && (
                         <p className="text-[11px] text-muted-foreground px-1">
-                          ≈ €{formatEUR(preview.finalCost)} with freight & taxes
+                          ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
                         </p>
                       )}
                     </>
@@ -385,7 +435,7 @@ export const CarPricesSection = ({
 
       {numberOfCars > 1 && (
         <p className="text-xs text-muted-foreground mt-4 text-center">
-          Container costs are split equally between vehicles
+          {t.containerSplit}
         </p>
       )}
     </Card>

@@ -7,8 +7,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
+import type { Language } from "@/types/language";
 
 interface VehicleDetailsSectionProps {
+  language: Language;
   scenario: "physical" | "company";
   setScenario: (value: "physical" | "company") => void;
   numberOfCars: number;
@@ -32,7 +34,94 @@ interface VehicleDetailsSectionProps {
   setMiscellaneous: (value: number) => void;
 }
 
+const copy: Record<
+  Language,
+  {
+    title: string;
+    subtitle: string;
+    importAs: string;
+    physical: string;
+    company: string;
+    numberOfCars: string;
+    containerType: string;
+    maxCars: (max: number) => string;
+    twentyFt: string;
+    fortyFt: string;
+    freightLabel: string;
+    advancedSettings: string;
+    customs: string;
+    customsError: string;
+    vat: string;
+    vatError: string;
+    speditor: string;
+    speditorNote: string;
+    homologation: string;
+    translation: string;
+    translationNote: (pages: number, perCar: string) => string;
+    portAgent: string;
+    portAgentNote: (local: number, cars: number) => string;
+    misc: string;
+    miscError: string;
+  }
+> = {
+  en: {
+    title: "Import Settings",
+    subtitle: "Container & fees configuration",
+    importAs: "Import As",
+    physical: "Physical Person",
+    company: "Company (VAT refund)",
+    numberOfCars: "Number of Cars",
+    containerType: "Container Type",
+    maxCars: (max) => `Max ${max} cars`,
+    twentyFt: "20ft",
+    fortyFt: "40ft HC",
+    freightLabel: "Freight per car",
+    advancedSettings: "Advanced Settings",
+    customs: "Customs Duty (%)",
+    customsError: "0–30% expected",
+    vat: "VAT (%)",
+    vatError: "0–25% expected",
+    speditor: "Speditor Fee (€/car)",
+    speditorNote: "150€ + 21% VAT",
+    homologation: "Homologation (€/car)",
+    translation: "Translation Pages",
+    translationNote: (pages, perCar) => `35€ × ${pages} = €${perCar}/car`,
+    portAgent: "Port & Agent (€/car)",
+    portAgentNote: (local, cars) => `(${local}÷${cars}) + 250`,
+    misc: "Miscellaneous (€/car)",
+    miscError: "Must be ≥ 0",
+  },
+  ru: {
+    title: "Настройки импорта",
+    subtitle: "Параметры контейнера и сборов",
+    importAs: "Ввоз как",
+    physical: "Физ. лицо",
+    company: "Компания (возврат НДС)",
+    numberOfCars: "Количество авто",
+    containerType: "Тип контейнера",
+    maxCars: (max) => `Макс ${max} авто`,
+    twentyFt: "20ft",
+    fortyFt: "40ft HC",
+    freightLabel: "Фрахт на авто",
+    advancedSettings: "Дополнительные параметры",
+    customs: "Пошлина (%)",
+    customsError: "Ожидается 0–30%",
+    vat: "НДС (%)",
+    vatError: "Ожидается 0–25%",
+    speditor: "Экспедитор (€/авто)",
+    speditorNote: "150€ + 21% НДС",
+    homologation: "Гомологация (€/авто)",
+    translation: "Страниц перевода",
+    translationNote: (pages, perCar) => `35€ × ${pages} = €${perCar}/авто`,
+    portAgent: "Порт и агент (€/авто)",
+    portAgentNote: (local, cars) => `(${local}÷${cars}) + 250`,
+    misc: "Прочие расходы (€/авто)",
+    miscError: "Должно быть ≥ 0",
+  },
+};
+
 export const VehicleDetailsSection = ({
+  language,
   scenario,
   setScenario,
   numberOfCars,
@@ -55,6 +144,7 @@ export const VehicleDetailsSection = ({
   miscellaneous,
   setMiscellaneous,
 }: VehicleDetailsSectionProps) => {
+  const t = copy[language];
   const [showAdvanced, setShowAdvanced] = useState(false);
   const parseNumber = (value: string) => Number(value.replace(",", "."));
   const clamp = (value: number, min: number, max: number) =>
@@ -81,9 +171,9 @@ export const VehicleDetailsSection = ({
         </div>
         <div>
           <h2 className="text-lg font-semibold text-foreground">
-            Import Settings
+            {t.title}
           </h2>
-          <p className="text-xs text-muted-foreground">Container & fees configuration</p>
+          <p className="text-xs text-muted-foreground">{t.subtitle}</p>
         </div>
       </div>
 
@@ -92,22 +182,22 @@ export const VehicleDetailsSection = ({
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="scenario" className="text-sm font-medium">
-              Import As
+              {t.importAs}
             </Label>
             <Select value={scenario} onValueChange={(value) => setScenario(value as "physical" | "company")}>
               <SelectTrigger id="scenario" className="mt-1.5 input-focus-ring">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="physical">Physical Person</SelectItem>
-                <SelectItem value="company">Company (VAT refund)</SelectItem>
+                <SelectItem value="physical">{t.physical}</SelectItem>
+                <SelectItem value="company">{t.company}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
             <Label htmlFor="numberOfCars" className="text-sm font-medium">
-              Number of Cars
+              {t.numberOfCars}
             </Label>
             <div className="flex gap-2 mt-1.5">
               {[1, 2, 3, 4].slice(0, containerInfo.maxCars).map((num) => (
@@ -127,7 +217,7 @@ export const VehicleDetailsSection = ({
 
         {/* Container type with visual */}
         <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
-          <Label className="text-sm font-medium mb-3 block">Container Type</Label>
+          <Label className="text-sm font-medium mb-3 block">{t.containerType}</Label>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => {
@@ -142,9 +232,9 @@ export const VehicleDetailsSection = ({
             >
               <div className="flex items-center gap-2 mb-1">
                 <Container className="w-4 h-4" />
-                <span className="font-medium text-sm">20ft</span>
+                <span className="font-medium text-sm">{t.twentyFt}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Max 2 cars</p>
+              <p className="text-xs text-muted-foreground">{t.maxCars(2)}</p>
               <p className="text-xs font-medium text-primary mt-1">$3 150</p>
             </button>
             <button
@@ -157,9 +247,9 @@ export const VehicleDetailsSection = ({
             >
               <div className="flex items-center gap-2 mb-1">
                 <Package className="w-4 h-4" />
-                <span className="font-medium text-sm">40ft HC</span>
+                <span className="font-medium text-sm">{t.fortyFt}</span>
               </div>
-              <p className="text-xs text-muted-foreground">Max 4 cars</p>
+              <p className="text-xs text-muted-foreground">{t.maxCars(4)}</p>
               <p className="text-xs font-medium text-primary mt-1">$4 150</p>
             </button>
           </div>
@@ -167,7 +257,7 @@ export const VehicleDetailsSection = ({
 
         {/* Freight summary */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/20">
-          <span className="text-sm text-muted-foreground">Freight per car</span>
+          <span className="text-sm text-muted-foreground">{t.freightLabel}</span>
           <span className="text-lg font-bold text-primary">€{displayMoney(freightPerCar)}</span>
         </div>
 
@@ -175,7 +265,7 @@ export const VehicleDetailsSection = ({
         <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="w-full justify-between h-10 px-3">
-              <span className="text-sm font-medium">Advanced Settings</span>
+              <span className="text-sm font-medium">{t.advancedSettings}</span>
               <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
             </Button>
           </CollapsibleTrigger>
@@ -183,7 +273,7 @@ export const VehicleDetailsSection = ({
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="customsDuty" className="text-sm font-medium">
-                  Customs Duty (%)
+                  {t.customs}
                 </Label>
                 <Input
                   id="customsDuty"
@@ -196,12 +286,12 @@ export const VehicleDetailsSection = ({
                   className={`mt-1.5 input-focus-ring ${customsInvalid ? "border-destructive/60" : ""}`}
                 />
                 {customsInvalid && (
-                  <p className="text-xs text-destructive mt-1">0–30% expected</p>
+                  <p className="text-xs text-destructive mt-1">{t.customsError}</p>
                 )}
               </div>
               <div>
                 <Label htmlFor="vat" className="text-sm font-medium">
-                  VAT (%)
+                  {t.vat}
                 </Label>
                 <Input
                   id="vat"
@@ -214,7 +304,7 @@ export const VehicleDetailsSection = ({
                   className={`mt-1.5 input-focus-ring ${vatInvalid ? "border-destructive/60" : ""}`}
                 />
                 {vatInvalid && (
-                  <p className="text-xs text-destructive mt-1">0–25% expected</p>
+                  <p className="text-xs text-destructive mt-1">{t.vatError}</p>
                 )}
               </div>
             </div>
@@ -222,7 +312,7 @@ export const VehicleDetailsSection = ({
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="speditorFee" className="text-sm font-medium">
-                  Speditor Fee (€/car)
+                  {t.speditor}
                 </Label>
                 <Input
                   id="speditorFee"
@@ -231,11 +321,11 @@ export const VehicleDetailsSection = ({
                   readOnly
                   className="mt-1.5 bg-muted/50 cursor-not-allowed text-muted-foreground"
                 />
-                <p className="text-xs text-muted-foreground mt-1">150€ + 21% VAT</p>
+                <p className="text-xs text-muted-foreground mt-1">{t.speditorNote}</p>
               </div>
               <div>
                 <Label htmlFor="homologationFee" className="text-sm font-medium">
-                  Homologation (€/car)
+                  {t.homologation}
                 </Label>
                 <Input
                   id="homologationFee"
@@ -251,7 +341,7 @@ export const VehicleDetailsSection = ({
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="translationPages" className="text-sm font-medium">
-                  Translation Pages
+                  {t.translation}
                 </Label>
                 <Input
                   id="translationPages"
@@ -262,12 +352,12 @@ export const VehicleDetailsSection = ({
                   className="mt-1.5 input-focus-ring"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  35€ × {translationPages} = €{displayMoney(translationPerCar)}/car
+                  {t.translationNote(translationPages, displayMoney(translationPerCar))}
                 </p>
               </div>
               <div>
                 <Label htmlFor="portAgentFee" className="text-sm font-medium">
-                  Port & Agent (€/car)
+                  {t.portAgent}
                 </Label>
                 <Input
                   id="portAgentFee"
@@ -277,14 +367,14 @@ export const VehicleDetailsSection = ({
                   className="mt-1.5 bg-muted/50 cursor-not-allowed text-muted-foreground"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  ({containerInfo.localEUR}÷{numberOfCars}) + 250
+                  {t.portAgentNote(containerInfo.localEUR, numberOfCars)}
                 </p>
               </div>
             </div>
 
             <div>
               <Label htmlFor="miscellaneous" className="text-sm font-medium">
-                Miscellaneous (€/car)
+                {t.misc}
               </Label>
               <Input
                 id="miscellaneous"
@@ -295,7 +385,7 @@ export const VehicleDetailsSection = ({
                 className={`mt-1.5 input-focus-ring ${miscInvalid ? "border-destructive/60" : ""}`}
               />
               {miscInvalid && (
-                <p className="text-xs text-destructive mt-1">Must be ≥ 0</p>
+                <p className="text-xs text-destructive mt-1">{t.miscError}</p>
               )}
             </div>
           </CollapsibleContent>
