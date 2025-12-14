@@ -156,115 +156,44 @@ export const ResultsBottomSheet = ({
 
       <BottomSheetBody className="pt-4">
         <div className="space-y-5">
-          {/* SECTION 0: SCENARIO COMPARE */}
-          <Card className="p-4 border-primary/30">
-            <div className="flex items-center justify-between mb-3 gap-3">
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">
-                  {isRu ? "Физлицо и компания" : "Physical vs Company"}
-                </h3>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant={scenario === "physical" ? "default" : "outline"}
-                  onClick={() => onScenarioChange("physical")}
-                  className="h-8"
-                >
-                  {isRu ? "Физ. лицо" : "Physical"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant={scenario === "company" ? "default" : "outline"}
-                  onClick={() => onScenarioChange("company")}
-                  className="h-8"
-                >
-                  {isRu ? "Компания" : "Company"}
-                </Button>
-              </div>
+          {/* SECTION 0: SCENARIO TOGGLE - Compact inline design */}
+          <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-muted/30 border border-border/40">
+            <div className="flex items-center gap-1.5 rounded-lg bg-background/60 p-0.5">
+              <button
+                type="button"
+                onClick={() => onScenarioChange("physical")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  scenario === "physical"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {isRu ? "Физ. лицо" : "Physical"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onScenarioChange("company")}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  scenario === "company"
+                    ? "bg-green-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                {isRu ? "Компания" : "Company"}
+              </button>
             </div>
-
-            <div className="grid sm:grid-cols-3 gap-3">
-              {[
-                {
-                  key: "scenario-physical",
-                  title: isRu ? "Физ. лицо" : "Physical",
-                  colorClasses: "bg-muted/40 border border-border/50",
-                  value: `€${formatEUR(physicalTotal)}`,
-                  note: isRu ? "С учетом НДС" : "With VAT",
-                  tip: isRu
-                    ? `${carsWithPrices.length} авто × €${formatEURWithCents(avgFinalCost)} = €${formatEURWithCents(physicalTotal)}`
-                    : `${carsWithPrices.length} cars × €${formatEURWithCents(avgFinalCost)} avg = €${formatEURWithCents(physicalTotal)}`,
-                },
-                {
-                  key: "scenario-company",
-                  title: isRu ? "Компания" : "Company",
-                  colorClasses: "bg-green-500/10 border border-green-500/30",
-                  value: `€${formatEUR(companyNet)}`,
-                  note: isRu ? "С возвратом НДС" : "VAT refund applied",
-                  tip: isRu
-                    ? `Физлицо €${formatEURWithCents(physicalTotal)} − возврат НДС €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`
-                    : `Physical €${formatEURWithCents(physicalTotal)} − VAT refund €${formatEURWithCents(vatRefundTotal)} = €${formatEURWithCents(companyNet)}`,
-                },
-                {
-                  key: "scenario-savings",
-                  title: isRu ? "Экономия" : "Savings",
-                  colorClasses: "bg-primary/5 border border-primary/30",
-                  value: `€${formatEUR(Math.max(0, vatRefundTotal))}`,
-                  note: isRu ? "Возврат НДС" : "Refunded VAT",
-                  tip: isRu
-                    ? `Возврат НДС за авто €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`
-                    : `VAT refund per car €${formatEURWithCents(carsWithPrices.length ? vatRefundTotal / carsWithPrices.length : 0)} × ${carsWithPrices.length} = €${formatEURWithCents(vatRefundTotal)}`,
-                },
-              ].map((item) => {
-                const isOpen = openInfoKey === item.key;
-                const content = (
-                  <div>
-                    <p className="font-semibold mb-1">
-                      {isRu ? `Расчет: ${item.title}` : `${item.title} calculation`}
-                    </p>
-                    <p className="text-muted-foreground leading-snug">{item.tip}</p>
-                  </div>
-                );
-
-                return (
-                  <Tooltip key={item.key} delayDuration={150}>
-                    <Popover open={isOpen} onOpenChange={(open) => setOpenInfoKey(open ? item.key : null)}>
-                      <TooltipTrigger asChild>
-                        <PopoverTrigger asChild>
-                          <button
-                            type="button"
-                            className={`p-3 rounded-lg text-left w-full cursor-help transition-colors ${item.colorClasses}`}
-                            onClick={() => setOpenInfoKey(isOpen ? null : item.key)}
-                            aria-label={
-                              isRu ? `${item.title}: детали расчета` : `${item.title} calculation details`
-                            }
-                          >
-                            <p className={`text-[11px] uppercase tracking-wide mb-1 ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : item.key === "scenario-savings" ? "text-primary" : "text-muted-foreground"}`}>
-                              {item.title}
-                            </p>
-                            <p className={`text-xl font-bold ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : item.key === "scenario-savings" ? "text-primary" : "text-foreground"}`}>
-                              {item.value}
-                            </p>
-                            <p className={`text-[11px] ${item.key === "scenario-company" ? "text-green-700 dark:text-green-400" : "text-muted-foreground"}`}>
-                              {item.note}
-                            </p>
-                          </button>
-                        </PopoverTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[240px] text-xs hidden sm:block">
-                        {content}
-                      </TooltipContent>
-                      <PopoverContent side="top" className="max-w-xs text-xs sm:hidden">
-                        {content}
-                      </PopoverContent>
-                    </Popover>
-                  </Tooltip>
-                );
-              })}
-            </div>
-          </Card>
+            
+            {scenario === "company" && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground hidden sm:inline">
+                  {isRu ? "Возврат НДС:" : "VAT refund:"}
+                </span>
+                <span className="font-semibold text-green-600 dark:text-green-400">
+                  −€{formatEUR(vatRefundTotal)}
+                </span>
+              </div>
+            )}
+          </div>
           
           {/* SECTION 1: EXECUTIVE SUMMARY */}
           <Card className="overflow-hidden border-2 border-primary/30">
@@ -530,15 +459,7 @@ export const ResultsBottomSheet = ({
                         } as const)
                       : null,
                   ] as const)
-                    .filter(
-                      (item): item is {
-                        key: string;
-                        label: string;
-                        perCar: number;
-                        total: number;
-                        fullRow?: boolean;
-                      } => Boolean(item),
-                    )
+                    .filter((item): item is NonNullable<typeof item> => Boolean(item))
                     .map((service) => {
                     const isOpen = openInfoKey === service.key;
                     const content = (
@@ -561,7 +482,7 @@ export const ResultsBottomSheet = ({
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className={`p-2 bg-background flex justify-between items-center text-xs cursor-help w-full text-left ${service.fullRow ? "col-span-2" : ""}`}
+                                className={`p-2 bg-background flex justify-between items-center text-xs cursor-help w-full text-left ${"fullRow" in service && service.fullRow ? "col-span-2" : ""}`}
                                 onClick={() => setOpenInfoKey(isOpen ? null : service.key)}
                                 aria-label={
                                   isRu
