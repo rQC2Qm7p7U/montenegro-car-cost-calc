@@ -28,7 +28,11 @@ import {
 } from "@/components/ui/tooltip";
 import type { Language } from "@/types/language";
 import { FX_VALID_RANGES } from "@/utils/currency";
-import { CONTAINER_CONFIGS, COSTS } from "@/config/costs";
+import {
+  CONTAINER_CONFIGS,
+  COST_CONFIG,
+  SPEDITOR_GROSS_FEE,
+} from "@/config/costs";
 import {
   Action,
   CalculatorState,
@@ -43,9 +47,8 @@ import { calculatorCopy } from "./calculator/i18n";
 import { useExchangeRates } from "./calculator/useExchangeRates";
 import { useCalculatorDispatchers } from "./calculator/useCalculatorDispatchers";
 
-const SPEDITOR_VAT_RATE = COSTS.speditor.vatRate;
-const SPEDITOR_FEE =
-  COSTS.speditor.baseFeeEUR * (1 + SPEDITOR_VAT_RATE);
+const SPEDITOR_VAT_RATE = COST_CONFIG.speditor.vatRate;
+const SPEDITOR_FEE = SPEDITOR_GROSS_FEE;
 
 const Calculator = () => {
   const { toast } = useToast();
@@ -247,7 +250,7 @@ const Calculator = () => {
         usdPerEur: usdPerEurRate,
       });
     }
-  }, [krwPerUsdRate, setLastValidRatesState, usdPerEurRate]);
+  }, [fxUpdateSourceRef, krwPerUsdRate, setLastValidRatesState, setFxSource, usdPerEurRate]);
 
   // Check if all car prices are filled
   const completedCars = carPrices.filter((p) => p > 0).length;
