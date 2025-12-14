@@ -28,8 +28,7 @@ describe("currency formatting and parsing", () => {
 
   it("returns zero for empty or invalid inputs", () => {
     expect(parseKRWInput("")).toBe(0);
-    // @ts-expect-error allow undefined in test
-    expect(parseKRWInput(undefined)).toBe(0);
+    expect(parseKRWInput(undefined as unknown as string)).toBe(0);
     expect(parseKRWInput("abc")).toBe(0);
   });
 
