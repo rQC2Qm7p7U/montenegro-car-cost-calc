@@ -9,6 +9,11 @@ import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { getContainerConfig } from "@/lib/carImport";
 import type { Language } from "@/types/language";
+import {
+  MAX_HOMOLOGATION_EUR,
+  MAX_MISC_EUR,
+  MAX_TRANSLATION_PAGES,
+} from "./state";
 
 interface VehicleDetailsSectionProps {
   language: Language;
@@ -331,7 +336,12 @@ export const VehicleDetailsSection = ({
                   type="number"
                   value={homologationFee}
                   min={0}
-                  onChange={(e) => setHomologationFee(Math.max(0, parseNumber(e.target.value)))}
+                  max={MAX_HOMOLOGATION_EUR}
+                  onChange={(e) =>
+                    setHomologationFee(
+                      clamp(parseNumber(e.target.value), 0, MAX_HOMOLOGATION_EUR),
+                    )
+                  }
                   className="mt-1.5 input-focus-ring"
                 />
               </div>
@@ -346,8 +356,13 @@ export const VehicleDetailsSection = ({
                   id="translationPages"
                   type="number"
                   min="0"
+                  max={MAX_TRANSLATION_PAGES}
                   value={translationPages}
-                  onChange={(e) => setTranslationPages(Math.max(0, parseNumber(e.target.value)))}
+                  onChange={(e) =>
+                    setTranslationPages(
+                      clamp(parseNumber(e.target.value), 0, MAX_TRANSLATION_PAGES),
+                    )
+                  }
                   className="mt-1.5 input-focus-ring"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -380,7 +395,12 @@ export const VehicleDetailsSection = ({
                 type="number"
                 value={miscellaneous}
                 min={0}
-                onChange={(e) => setMiscellaneous(Math.max(0, parseNumber(e.target.value)))}
+                max={MAX_MISC_EUR}
+                onChange={(e) =>
+                  setMiscellaneous(
+                    clamp(parseNumber(e.target.value), 0, MAX_MISC_EUR),
+                  )
+                }
                 className={`mt-1.5 input-focus-ring ${miscInvalid ? "border-destructive/60" : ""}`}
               />
               {miscInvalid && (

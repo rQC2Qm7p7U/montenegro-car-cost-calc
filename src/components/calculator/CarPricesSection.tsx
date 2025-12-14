@@ -10,6 +10,7 @@ import { Copy, Info, Car, CheckCircle2 } from "lucide-react";
 import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/currency";
 import type { CalculationResults } from "@/types/calculator";
 import type { Language } from "@/types/language";
+import { MAX_CAR_PRICE_EUR } from "./state";
 
 interface CarPricesSectionProps {
   language: Language;
@@ -79,6 +80,9 @@ type CurrencyMode = "eur" | "krw";
 const clampNonNegative = (value: number) =>
   !Number.isFinite(value) || value < 0 ? 0 : value;
 
+const clampPrice = (value: number) =>
+  Math.min(MAX_CAR_PRICE_EUR, clampNonNegative(value));
+
 const formatEuroInput = (value: number) =>
   new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
     .format(value)
@@ -92,7 +96,7 @@ const computeEurFromKrwInput = (
 ) => {
   const parsedKRW = parseKRWInput(input);
   const actualKRW = raw ? parsedKRW : parsedKRW * 10000;
-  return clampNonNegative(convertKRWToEUR(actualKRW, krwPerUsdRate, usdPerEurRate));
+  return clampPrice(convertKRWToEUR(actualKRW, krwPerUsdRate, usdPerEurRate));
 };
 
 const formatKrwFromEur = (eur: number, krwPerUsdRate: number, usdPerEurRate: number, raw: boolean) => {
@@ -140,7 +144,7 @@ export const CarPricesSection = ({
   const handlePriceChange = (index: number, value: string) => {
     const digitsOnly = value.replace(/[^\d]/g, "");
     const intValue = digitsOnly === "" ? 0 : Math.trunc(Number(digitsOnly));
-    const safeValue = clampNonNegative(intValue);
+    const safeValue = clampPrice(intValue);
 
     setEurInputValues((prev) => {
       const next = [...prev];
@@ -173,7 +177,7 @@ export const CarPricesSection = ({
       const baseKrwString = krwInputValues[0] ?? "";
       const eurFromKrw = baseKrwString
         ? computeEurFromKrwInput(baseKrwString, krwPerUsdRate, usdPerEurRate, rawKRWMode)
-        : clampNonNegative(carPrices[0] ?? 0);
+        : clampPrice(carPrices[0] ?? 0);
       const eurDisplay = eurFromKrw ? formatEuroInput(eurFromKrw) : "";
       const krwDisplay =
         baseKrwString || formatKrwFromEur(eurFromKrw, krwPerUsdRate, usdPerEurRate, rawKRWMode);
@@ -184,7 +188,7 @@ export const CarPricesSection = ({
       return;
     }
 
-    const baseEur = clampNonNegative(carPrices[0] ?? 0);
+    const baseEur = clampPrice(carPrices[0] ?? 0);
     const eurDisplay = baseEur ? formatEuroInput(baseEur) : "";
     const krwDisplay = formatKrwFromEur(baseEur, krwPerUsdRate, usdPerEurRate, rawKRWMode);
 

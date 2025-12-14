@@ -1,5 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { readInitialState } from "./calculator/state";
+import {
+  MAX_CAR_PRICE_EUR,
+  MAX_HOMOLOGATION_EUR,
+  MAX_MISC_EUR,
+  MAX_TRANSLATION_PAGES,
+  readInitialState,
+} from "./calculator/state";
 
 const PERSIST_KEY = "car-import-state-v1";
 const FX_LAST_SUCCESS_KEY = "car-import-last-fx-v1";
@@ -99,6 +105,28 @@ describe("readInitialState (persistence)", () => {
 
     expect(state.lastValidRates).toBeNull();
     expect(localStorage.getItem(FX_LAST_SUCCESS_KEY)).toBeNull();
+  });
+
+  it("clamps persisted values that exceed configured ceilings", () => {
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({
+        carPrices: [MAX_CAR_PRICE_EUR + 10_000, 5],
+        translationPages: MAX_TRANSLATION_PAGES + 50,
+        homologationFee: MAX_HOMOLOGATION_EUR + 5_000,
+        miscellaneous: MAX_MISC_EUR + 25_000,
+        numberOfCars: 2,
+        containerType: "40ft",
+        persistedAt: Date.now(),
+      }),
+    );
+
+    const state = readInitialState();
+
+    expect(state.carPrices[0]).toBe(MAX_CAR_PRICE_EUR);
+    expect(state.translationPages).toBe(MAX_TRANSLATION_PAGES);
+    expect(state.homologationFee).toBe(MAX_HOMOLOGATION_EUR);
+    expect(state.miscellaneous).toBe(MAX_MISC_EUR);
   });
 
   it("defaults to language based on navigator.language", () => {

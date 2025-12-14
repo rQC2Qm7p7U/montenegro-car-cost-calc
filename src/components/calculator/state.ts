@@ -8,6 +8,10 @@ export const FX_REFRESH_MS = 10 * 60 * 1000; // 10 minutes
 export const LANGUAGE_STORAGE_KEY = "car-import-language";
 export const STATE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 export const FX_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+export const MAX_CAR_PRICE_EUR = 500_000;
+export const MAX_HOMOLOGATION_EUR = 10_000;
+export const MAX_TRANSLATION_PAGES = 300;
+export const MAX_MISC_EUR = 50_000;
 
 export const DEFAULTS = {
   customsDuty: 5,
@@ -78,7 +82,10 @@ export const ensureCarPriceLength = (
   const target = clampCars(numberOfCars, containerType);
   const sanitized = prices
     .slice(0, target)
-    .map((price) => (!Number.isFinite(price) || price < 0 ? 0 : price));
+    .map((price) => {
+      const safe = !Number.isFinite(price) || price < 0 ? 0 : price;
+      return Math.min(MAX_CAR_PRICE_EUR, safe);
+    });
 
   if (sanitized.length < target) {
     return [...sanitized, ...Array(target - sanitized.length).fill(0)];
@@ -155,11 +162,32 @@ export const calculatorReducer = (
     case "setVat":
       return { ...state, vat: action.value };
     case "setTranslationPages":
-      return { ...state, translationPages: action.value };
+      return {
+        ...state,
+        translationPages: clampPositive(
+          action.value,
+          MAX_TRANSLATION_PAGES,
+          state.translationPages,
+        ),
+      };
     case "setHomologationFee":
-      return { ...state, homologationFee: action.value };
+      return {
+        ...state,
+        homologationFee: clampPositive(
+          action.value,
+          MAX_HOMOLOGATION_EUR,
+          state.homologationFee,
+        ),
+      };
     case "setMiscellaneous":
-      return { ...state, miscellaneous: action.value };
+      return {
+        ...state,
+        miscellaneous: clampPositive(
+          action.value,
+          MAX_MISC_EUR,
+          state.miscellaneous,
+        ),
+      };
     case "setAutoUpdateFX":
       return { ...state, autoUpdateFX: action.value };
     case "setRates":
@@ -313,7 +341,10 @@ export const readInitialState = (): InitialState => {
       parsedCarPrices.length > 0
         ? Array.from(
             { length: resolvedNumberOfCars },
-            (_, index) => parsedCarPrices[index] ?? 0,
+            (_, index) => {
+              const value = parsedCarPrices[index] ?? 0;
+              return Math.min(MAX_CAR_PRICE_EUR, value);
+            },
           )
         : Array.from({ length: resolvedNumberOfCars }, () => 0);
 
@@ -363,7 +394,7 @@ export const readInitialState = (): InitialState => {
         0,
         clampPositive(
           parseNumber(merged.translationPages, DEFAULTS.translationPages),
-          200,
+          MAX_TRANSLATION_PAGES,
           DEFAULTS.translationPages,
         ),
       ),
@@ -371,7 +402,7 @@ export const readInitialState = (): InitialState => {
         0,
         clampPositive(
           parseNumber(merged.homologationFee, DEFAULTS.homologationFee),
-          20000,
+          MAX_HOMOLOGATION_EUR,
           DEFAULTS.homologationFee,
         ),
       ),
@@ -379,7 +410,7 @@ export const readInitialState = (): InitialState => {
         0,
         clampPositive(
           parseNumber(merged.miscellaneous, DEFAULTS.miscellaneous),
-          20000,
+          MAX_MISC_EUR,
           DEFAULTS.miscellaneous,
         ),
       ),

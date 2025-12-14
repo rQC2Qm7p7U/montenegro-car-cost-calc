@@ -40,6 +40,7 @@ vi.mock("@/components/ui/select", () => {
 });
 
 import { CarPricesSection } from "./CarPricesSection";
+import { MAX_CAR_PRICE_EUR } from "./state";
 const makeResults = (carPrices: number[]): CalculationResults => {
   const carResults: CarCalculationResult[] = carPrices.map((price, index) => ({
     carIndex: index + 1,
@@ -185,5 +186,54 @@ describe("CarPricesSection (RTL)", () => {
 
     const next = setCarPrices.mock.calls.at(-1)?.[0];
     expect(next).toEqual([10000, 10000]);
+  });
+
+  it("clamps car price inputs to the configured maximum", async () => {
+    const { setCarPrices } = renderSection();
+    const user = userEvent.setup();
+
+    const firstInput = screen.getAllByPlaceholderText(/12 500/i)[0];
+    await user.clear(firstInput);
+    await user.type(firstInput, String(MAX_CAR_PRICE_EUR + 5000));
+
+    await waitFor(() => expect(setCarPrices).toHaveBeenCalled());
+    const updater = setCarPrices.mock.calls.at(-1)?.[0];
+    const next = typeof updater === "function" ? updater([0, 0]) : updater;
+    expect(next[0]).toBe(MAX_CAR_PRICE_EUR);
+  });
+
+  it("clamps KRW inputs that convert above the price ceiling", async () => {
+    const { setCarPrices } = renderSection();
+    const user = userEvent.setup();
+
+    const currencySelect = screen.getByLabelText("currency-select");
+    await user.selectOptions(currencySelect, "krw");
+
+    const krwInput = screen.getAllByPlaceholderText(/2 280/i)[0];
+    await user.type(krwInput, "999999999999"); // huge KRW value
+
+    await waitFor(() => expect(setCarPrices).toHaveBeenCalled());
+    const updater = setCarPrices.mock.calls.at(-1)?.[0];
+    const next = typeof updater === "function" ? updater([0, 0]) : updater;
+    expect(next[0]).toBe(MAX_CAR_PRICE_EUR);
+  });
+
+  it("copies capped price to all cars when base price exceeds ceiling", async () => {
+    const setCarPrices = vi.fn();
+    const props = { ...baseProps, carPrices: [MAX_CAR_PRICE_EUR + 10_000, 0, 0], numberOfCars: 3 };
+    const user = userEvent.setup();
+    render(
+      <CarPricesSection
+        {...props}
+        setCarPrices={setCarPrices}
+        results={makeResults(props.carPrices)}
+      />,
+    );
+
+    const applyButtons = screen.getAllByRole("button", { name: /apply car #1 price to all/i });
+    await user.click(applyButtons[0]);
+
+    const next = setCarPrices.mock.calls.at(-1)?.[0];
+    expect(next).toEqual([MAX_CAR_PRICE_EUR, MAX_CAR_PRICE_EUR, MAX_CAR_PRICE_EUR]);
   });
 });
