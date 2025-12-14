@@ -7,9 +7,17 @@ interface BottomSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  ariaTitle?: string;
+  ariaDescription?: string;
 }
 
-export function BottomSheet({ open, onOpenChange, children }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onOpenChange,
+  children,
+  ariaTitle = "Panel",
+  ariaDescription = "Additional content",
+}: BottomSheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
@@ -22,6 +30,10 @@ export function BottomSheet({ open, onOpenChange, children }: BottomSheetProps) 
         >
           {/* Drag handle */}
           <div className="mx-auto mt-4 h-1.5 w-12 shrink-0 rounded-full bg-muted-foreground/30" />
+          <Drawer.Title className="sr-only">{ariaTitle}</Drawer.Title>
+          <Drawer.Description className="sr-only">
+            {ariaDescription}
+          </Drawer.Description>
           
           {/* Close button - visible on desktop */}
           <Drawer.Close className="absolute left-4 top-4 rounded-full p-2 hover:bg-muted transition-colors hidden sm:flex items-center justify-center">

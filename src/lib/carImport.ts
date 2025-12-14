@@ -1,12 +1,7 @@
 import type { CalculationResults, CarCalculationResult } from "@/types/calculator";
+import { CONTAINER_CONFIGS, COSTS } from "@/config/costs";
 
-export type ContainerType = "20ft" | "40ft";
-
-interface ContainerConfig {
-  freightUSD: number;
-  localEUR: number;
-  maxCars: number;
-}
+export type ContainerType = keyof typeof CONTAINER_CONFIGS;
 
 export interface CarImportParams {
   carPrices: number[];
@@ -23,10 +18,7 @@ export interface CarImportParams {
   speditorVatRate?: number;
 }
 
-export const getContainerConfig = (type: ContainerType): ContainerConfig =>
-  type === "20ft"
-    ? { maxCars: 2, freightUSD: 3150, localEUR: 350 }
-    : { maxCars: 4, freightUSD: 4150, localEUR: 420 };
+export const getContainerConfig = (type: ContainerType) => CONTAINER_CONFIGS[type];
 
 export const calculateCarImport = (params: CarImportParams): CalculationResults => {
   const {
@@ -49,8 +41,8 @@ export const calculateCarImport = (params: CarImportParams): CalculationResults 
 
   const freightPerContainerEUR = containerConfig.freightUSD * usdToEurRate;
   const freightPerCar = freightPerContainerEUR / carsCount;
-  const portAgentFeePerCar = containerConfig.localEUR / carsCount + 250;
-  const translationPerCar = translationPages * 35;
+  const portAgentFeePerCar = containerConfig.localEUR / carsCount + COSTS.portAgentBaseEUR;
+  const translationPerCar = translationPages * COSTS.translationPerPageEUR;
   const speditorNet =
     speditorVatRate > 0 ? speditorFee / (1 + speditorVatRate) : speditorFee;
   const speditorVatPortion = Math.max(0, speditorFee - speditorNet);

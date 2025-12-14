@@ -1,5 +1,6 @@
 import type { SetStateAction } from "react";
 import { FX_VALID_RANGES } from "@/utils/currency";
+import { CONTAINER_CONFIGS } from "@/config/costs";
 import type { Language } from "@/types/language";
 
 export const PERSIST_KEY = "car-import-state-v1";
@@ -22,7 +23,7 @@ export const DEFAULTS = {
 };
 
 export const getContainerMaxCars = (containerType: "20ft" | "40ft") =>
-  containerType === "20ft" ? 2 : 4;
+  CONTAINER_CONFIGS[containerType].maxCars;
 
 export const clampToRange = (
   value: number,

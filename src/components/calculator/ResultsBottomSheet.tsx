@@ -137,7 +137,14 @@ export const ResultsBottomSheet = ({
   };
 
   return (
-    <BottomSheet open={open} onOpenChange={onOpenChange}>
+    <BottomSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      ariaTitle={isRu ? "Результаты расчета" : "Calculation results"}
+      ariaDescription={
+        isRu ? "Подробный разбор стоимости импорта" : "Detailed import cost breakdown"
+      }
+    >
       <BottomSheetHeader className="pb-0">
         <div className="flex items-center gap-3 pr-10 sm:pr-0">
           <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 shadow-lg">

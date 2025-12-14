@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, useReducer } from "react";
-import type { SetStateAction } from "react";
 import {
   Ship,
   Calculator as CalcIcon,
@@ -9,7 +8,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ThemeToggle from "./ThemeToggle";
-import { fetchExchangeRates, FX_VALID_RANGES } from "@/utils/currency";
 import { useCarImportCalculations } from "@/hooks/useCarImportCalculations";
 import { useCalculatorPersistence } from "@/hooks/useCalculatorPersistence";
 import { CurrencyRatesSection } from "./calculator/CurrencyRatesSection";
@@ -29,108 +27,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Language } from "@/types/language";
+import { FX_VALID_RANGES } from "@/utils/currency";
+import { CONTAINER_CONFIGS, COSTS } from "@/config/costs";
 import {
   Action,
   CalculatorState,
-  DEFAULTS,
-  FX_LAST_SUCCESS_KEY,
-  FX_REFRESH_MS,
   LANGUAGE_STORAGE_KEY,
   PERSIST_KEY,
-  clampToRange,
   calculatorReducer,
   type InitialState,
   readInitialState,
   resolveInitialLanguage,
 } from "./calculator/state";
+import { calculatorCopy } from "./calculator/i18n";
+import { useExchangeRates } from "./calculator/useExchangeRates";
+import { useCalculatorDispatchers } from "./calculator/useCalculatorDispatchers";
 
-const SPEDITOR_BASE_FEE = 150;
-const SPEDITOR_VAT_RATE = 0.21;
-const SPEDITOR_FEE = SPEDITOR_BASE_FEE * (1 + SPEDITOR_VAT_RATE);
-
-const calculatorCopy: Record<
-  Language,
-  {
-    title: string;
-    subtitle: string;
-    ratesSheetTitle: string;
-    ratesSheetSubtitle: string;
-    ratesUpdatedTitle: string;
-    ratesFallbackTitle: string;
-    ratesUpdatedDescription: (krw: number, usd: number) => string;
-    ratesFallbackDescription: string;
-    fxStatus: {
-      notUpdated: string;
-      justNow: string;
-      minuteAgo: string;
-      minutesAgo: (minutes: number) => string;
-    };
-    calculateReady: string;
-    calculateMissing: (remaining: number) => string;
-    copyRatesLabel: string;
-  }
-> = {
-  en: {
-    title: "Car Import Calculator",
-    subtitle: "Korea → Montenegro",
-    ratesSheetTitle: "Exchange Rates",
-    ratesSheetSubtitle: "KRW → USD & USD → EUR",
-    ratesUpdatedTitle: "Rates updated",
-    ratesFallbackTitle: "Using fallback rates",
-    ratesUpdatedDescription: (krw, usd) =>
-      `$1 = ${new Intl.NumberFormat("ru-RU")
-        .format(Math.round(krw))
-        .replace(/\u00A0/g, " ")} KRW | €1 = $${usd
-        .toLocaleString("ru-RU", {
-          minimumFractionDigits: 4,
-          maximumFractionDigits: 4,
-        })
-        .replace(/\u00A0/g, " ")}`,
-    ratesFallbackDescription:
-      "Live rates were unavailable or invalid; using safe defaults.",
-    fxStatus: {
-      notUpdated: "Not updated yet",
-      justNow: "Just now",
-      minuteAgo: "Updated 1 min ago",
-      minutesAgo: (minutes: number) => `Updated ${minutes} min ago`,
-    },
-    calculateReady: "Calculate",
-    calculateMissing: (remaining: number) =>
-      `Enter ${remaining} more price${remaining > 1 ? "s" : ""}`,
-    copyRatesLabel: "Updated",
-  },
-  ru: {
-    title: "Калькулятор ввоза авто",
-    subtitle: "Корея → Черногория",
-    ratesSheetTitle: "Курсы валют",
-    ratesSheetSubtitle: "KRW → USD и USD → EUR",
-    ratesUpdatedTitle: "Курсы обновлены",
-    ratesFallbackTitle: "Используем резервные курсы",
-    ratesUpdatedDescription: (krw, usd) =>
-      `$1 = ${new Intl.NumberFormat("ru-RU")
-        .format(Math.round(krw))
-        .replace(/\u00A0/g, " ")} KRW | €1 = $${usd
-        .toLocaleString("ru-RU", {
-          minimumFractionDigits: 4,
-          maximumFractionDigits: 4,
-        })
-        .replace(/\u00A0/g, " ")}`,
-    ratesFallbackDescription:
-      "Не удалось получить живые курсы, используем безопасные значения.",
-    fxStatus: {
-      notUpdated: "Еще не обновлялось",
-      justNow: "Только что",
-      minuteAgo: "Обновлено минуту назад",
-      minutesAgo: (minutes: number) => `Обновлено ${minutes} мин назад`,
-    },
-    calculateReady: "Рассчитать",
-    calculateMissing: (remaining: number) =>
-      `Заполните еще ${remaining} цен${
-        remaining === 1 ? "у" : remaining < 5 ? "ы" : ""
-      }`,
-    copyRatesLabel: "Обновлено",
-  },
-};
+const SPEDITOR_VAT_RATE = COSTS.speditor.vatRate;
+const SPEDITOR_FEE =
+  COSTS.speditor.baseFeeEUR * (1 + SPEDITOR_VAT_RATE);
 
 const Calculator = () => {
   const { toast } = useToast();
@@ -141,15 +56,9 @@ const Calculator = () => {
   }
   const initialState = initialStateRef.current;
 
-  const isMountedRef = useRef(true);
   const hasMountedRef = useRef(false);
-  const fetchInFlightRef = useRef(false);
-  const fxFailureCountRef = useRef(0);
-  const fxRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isResultsOpenState, setIsResultsOpenState] = useState(false);
   const isResultsOpenRef = useRef(false);
-  const formChangeRef = useRef(false);
-  const initialRatesFetchedRef = useRef(false);
 
   const [state, dispatch] = useReducer(calculatorReducer, initialState);
   const {
@@ -171,16 +80,6 @@ const Calculator = () => {
   const t = calculatorCopy[language];
   const controlButtonClasses =
     "h-10 w-10 rounded-lg border border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/10 active:scale-95 transition-colors transition-transform shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40";
-  const [isLoadingRates, setIsLoadingRates] = useState<boolean>(false);
-  const initialFxSource: "live" | "fallback" | "manual" | "restored" =
-    initialState.lastValidRates ? "restored" : "fallback";
-  const [fxSource, setFxSource] = useState<
-    "live" | "fallback" | "manual" | "restored"
-  >(initialFxSource);
-  const fxUpdateSourceRef = useRef<"none" | "live" | "fallback" | "restored">(
-    initialFxSource
-  );
-
   // Other costs and toggles handled in reducer above
   const [isRatesSheetOpen, setIsRatesSheetOpen] = useState(false);
   const ratesSheetTouchStart = useRef<number | null>(null);
@@ -191,7 +90,6 @@ const Calculator = () => {
   }, []);
   const isResultsOpen = isResultsOpenState;
   const markFormChanged = useCallback(() => {
-    formChangeRef.current = true;
     if (isResultsOpenRef.current) {
       setIsResultsOpen(false);
     }
@@ -207,123 +105,20 @@ const Calculator = () => {
     [dispatch, markFormChanged]
   );
 
-  const setCarPricesTracked = useCallback(
-    (updater: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => {
-      dispatchTracked({ type: "setCarPricesWithUpdater", updater }, options);
-    },
-    [dispatchTracked]
-  );
-
-  const setKrwPerUsdRateTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(krwPerUsdRate) : updater;
-      const clamped = clampToRange(
-        next,
-        FX_VALID_RANGES.krwPerUsd,
-        initialState.krwPerUsdRate
-      );
-      dispatchTracked({ type: "setRates", krwPerUsdRate: clamped });
-    },
-    [dispatchTracked, initialState.krwPerUsdRate, krwPerUsdRate]
-  );
-
-  const setUsdPerEurRateTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(usdPerEurRate) : updater;
-      const clamped = clampToRange(
-        next,
-        FX_VALID_RANGES.usdPerEur,
-        initialState.usdPerEurRate
-      );
-      dispatchTracked({ type: "setRates", usdPerEurRate: clamped });
-    },
-    [dispatchTracked, initialState.usdPerEurRate, usdPerEurRate]
-  );
-
-  const setCustomsDutyTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(customsDuty) : updater;
-      dispatchTracked({ type: "setCustomsDuty", value: next });
-    },
-    [customsDuty, dispatchTracked]
-  );
-
-  const setVatTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next = typeof updater === "function" ? updater(vat) : updater;
-      dispatchTracked({ type: "setVat", value: next });
-    },
-    [dispatchTracked, vat]
-  );
-
-  const setTranslationPagesTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(translationPages) : updater;
-      dispatchTracked({ type: "setTranslationPages", value: next });
-    },
-    [dispatchTracked, translationPages]
-  );
-
-  const setHomologationFeeTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(homologationFee) : updater;
-      dispatchTracked({ type: "setHomologationFee", value: next });
-    },
-    [dispatchTracked, homologationFee]
-  );
-
-  const setMiscellaneousTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(miscellaneous) : updater;
-      dispatchTracked({ type: "setMiscellaneous", value: next });
-    },
-    [dispatchTracked, miscellaneous]
-  );
-
-  const setScenarioTracked = useCallback(
-    (next: "physical" | "company") => {
-      dispatchTracked({ type: "setScenario", value: next });
-    },
-    [dispatchTracked]
-  );
-
-  const setNumberOfCarsTracked = useCallback(
-    (updater: SetStateAction<number>) => {
-      const next =
-        typeof updater === "function" ? updater(numberOfCars) : updater;
-      dispatchTracked({ type: "setNumberOfCars", value: next });
-    },
-    [dispatchTracked, numberOfCars]
-  );
-
-  const setContainerTypeTracked = useCallback(
-    (next: "20ft" | "40ft") => {
-      dispatchTracked({ type: "setContainerType", value: next });
-    },
-    [dispatchTracked]
-  );
-
-  const setAutoUpdateFXTracked = useCallback(
-    (updater: SetStateAction<boolean>) => {
-      const next =
-        typeof updater === "function" ? updater(autoUpdateFX) : updater;
-      dispatchTracked({ type: "setAutoUpdateFX", value: next });
-    },
-    [autoUpdateFX, dispatchTracked]
-  );
-
-  useEffect(
-    () => () => {
-      isMountedRef.current = false;
-    },
-    []
-  );
+  const {
+    setCarPrices,
+    setKrwPerUsdRate,
+    setUsdPerEurRate,
+    setCustomsDuty,
+    setVat,
+    setTranslationPages,
+    setHomologationFee,
+    setMiscellaneous,
+    setScenario,
+    setNumberOfCars,
+    setContainerType,
+    setAutoUpdateFX,
+  } = useCalculatorDispatchers({ state, initialState, dispatchTracked });
 
   useEffect(() => {
     try {
@@ -367,6 +162,43 @@ const Calculator = () => {
     [dispatch]
   );
 
+  const applyRates = useCallback(
+    (krwRate: number, usdRate: number) => {
+      dispatchTracked(
+        {
+          type: "setRates",
+          krwPerUsdRate: krwRate,
+          usdPerEurRate: usdRate,
+        },
+        { skipDirty: true }
+      );
+    },
+    [dispatchTracked]
+  );
+
+  const {
+    fxSource: fxSourceState,
+    setFxSource,
+    fxUpdateSourceRef,
+    handleFetchRates,
+    isLoadingRates,
+  } = useExchangeRates({
+    autoUpdateFX,
+    lastValidRates,
+    language,
+    copy: {
+      ratesFallbackDescription: t.ratesFallbackDescription,
+      ratesFallbackTitle: t.ratesFallbackTitle,
+      ratesUpdatedDescription: t.ratesUpdatedDescription,
+      ratesUpdatedTitle: t.ratesUpdatedTitle,
+    },
+    applyRates,
+    setLastValidRates: setLastValidRatesState,
+    setLastUpdatedAt: setLastUpdatedAtState,
+    toast,
+  });
+  const fxSource = fxSourceState;
+
   const usdToEurRate = usdPerEurRate > 0 ? 1 / usdPerEurRate : 0;
 
   // Calculate all results using custom hook
@@ -384,133 +216,6 @@ const Calculator = () => {
     speditorFee: SPEDITOR_FEE,
     speditorVatRate: SPEDITOR_VAT_RATE,
   });
-
-  // Fetch exchange rates
-  const handleFetchRates = useCallback(async (): Promise<boolean> => {
-    if (fetchInFlightRef.current || !isMountedRef.current) return false;
-    if (typeof navigator !== "undefined" && navigator.onLine === false) {
-      fxFailureCountRef.current += 1;
-      toast({
-        title: t.ratesFallbackTitle,
-        description: language === "en" ? "Offline — cannot refresh rates." : "Нет сети — обновление курсов недоступно.",
-        variant: "destructive",
-      });
-      return false;
-    }
-    fetchInFlightRef.current = true;
-    setIsLoadingRates(true);
-    try {
-      const rates = await fetchExchangeRates();
-      fxUpdateSourceRef.current = rates.isFallback ? "fallback" : "live";
-      if (!isMountedRef.current) return;
-      dispatchTracked(
-        {
-          type: "setRates",
-          krwPerUsdRate: rates.krwPerUsd,
-          usdPerEurRate: rates.usdPerEur,
-        },
-        { skipDirty: true }
-      );
-      const fetchedAt = rates.fetchedAt || Date.now();
-      setLastUpdatedAtState(fetchedAt);
-      if (!rates.isFallback) {
-        setLastValidRatesState({
-          krwPerUsd: rates.krwPerUsd,
-          usdPerEur: rates.usdPerEur,
-        });
-        localStorage.setItem(
-          FX_LAST_SUCCESS_KEY,
-          JSON.stringify({
-            krwPerUsd: rates.krwPerUsd,
-            usdPerEur: rates.usdPerEur,
-            fetchedAt,
-          })
-        );
-      }
-
-      fxFailureCountRef.current = 0;
-      setFxSource(rates.isFallback ? "fallback" : "live");
-
-      toast({
-        title: rates.isFallback ? t.ratesFallbackTitle : t.ratesUpdatedTitle,
-        description: rates.isFallback
-          ? t.ratesFallbackDescription
-          : t.ratesUpdatedDescription(rates.krwPerUsd, rates.usdPerEur),
-        variant: rates.isFallback ? "destructive" : "default",
-      });
-      return !rates.isFallback;
-    } catch {
-      fxFailureCountRef.current += 1;
-      throw new Error("Failed to fetch rates");
-    } finally {
-      fetchInFlightRef.current = false;
-      if (isMountedRef.current) {
-        setIsLoadingRates(false);
-      }
-    }
-  }, [
-    dispatchTracked,
-    language,
-    setLastUpdatedAtState,
-    setLastValidRatesState,
-    toast,
-    t,
-  ]);
-
-  // Fetch latest exchange rates on initial load
-  useEffect(() => {
-    if (initialRatesFetchedRef.current) return;
-    initialRatesFetchedRef.current = true;
-    if (autoUpdateFX || !lastValidRates) {
-      handleFetchRates();
-    }
-  }, [autoUpdateFX, handleFetchRates, lastValidRates]);
-
-  // Auto-update exchange rates when toggle is enabled
-  useEffect(() => {
-    if (autoUpdateFX) {
-      handleFetchRates();
-    }
-  }, [autoUpdateFX, handleFetchRates]);
-
-  // Auto-refresh rates with backoff when enabled
-  useEffect(() => {
-    if (!autoUpdateFX) return;
-    let cancelled = false;
-    const MAX_BACKOFF_MS = 60 * 60 * 1000; // 1 hour
-
-    const scheduleNext = (delay: number) => {
-      if (cancelled) return;
-      if (fxRetryTimeoutRef.current) {
-        clearTimeout(fxRetryTimeoutRef.current);
-      }
-      fxRetryTimeoutRef.current = setTimeout(run, delay);
-    };
-
-    const run = async () => {
-      if (cancelled) return;
-      let success = false;
-      try {
-        success = await handleFetchRates();
-      } catch {
-        // errors are handled with failure count increment inside handleFetchRates
-      }
-      const backoffStep = Math.min(fxFailureCountRef.current, 5);
-      const delay = success
-        ? FX_REFRESH_MS
-        : Math.min(FX_REFRESH_MS * 2 ** backoffStep, MAX_BACKOFF_MS);
-      scheduleNext(delay);
-    };
-
-    run();
-
-    return () => {
-      cancelled = true;
-      if (fxRetryTimeoutRef.current) {
-        clearTimeout(fxRetryTimeoutRef.current);
-      }
-    };
-  }, [autoUpdateFX, handleFetchRates]);
 
   // Track last valid rates from manual edits within acceptable ranges
   useEffect(() => {
@@ -550,7 +255,6 @@ const Calculator = () => {
 
   // Handle calculate button click
   const handleCalculate = () => {
-    formChangeRef.current = false;
     setIsResultsOpen(true);
   };
 
@@ -674,33 +378,33 @@ const Calculator = () => {
             <VehicleDetailsSection
               language={language}
               scenario={scenario}
-              setScenario={setScenarioTracked}
+              setScenario={setScenario}
               numberOfCars={numberOfCars}
-              setNumberOfCars={setNumberOfCarsTracked}
+              setNumberOfCars={setNumberOfCars}
               containerType={containerType}
-              setContainerType={setContainerTypeTracked}
+              setContainerType={setContainerType}
               freightPerCar={results.freightPerCar}
               freightPerContainerEUR={results.freightPerContainerEUR}
               customsDuty={customsDuty}
-              setCustomsDuty={setCustomsDutyTracked}
+              setCustomsDuty={setCustomsDuty}
               vat={vat}
-              setVat={setVatTracked}
+              setVat={setVat}
               speditorFee={results.speditorFee}
               homologationFee={homologationFee}
-              setHomologationFee={setHomologationFeeTracked}
+              setHomologationFee={setHomologationFee}
               translationPages={translationPages}
-              setTranslationPages={setTranslationPagesTracked}
+              setTranslationPages={setTranslationPages}
               translationPerCar={results.translationPerCar}
               portAgentFeePerCar={results.portAgentFeePerCar}
               miscellaneous={miscellaneous}
-              setMiscellaneous={setMiscellaneousTracked}
+              setMiscellaneous={setMiscellaneous}
             />
 
             <CarPricesSection
               language={language}
               numberOfCars={numberOfCars}
               carPrices={carPrices}
-              setCarPrices={setCarPricesTracked}
+              setCarPrices={setCarPrices}
               krwPerUsdRate={krwPerUsdRate}
               usdPerEurRate={usdPerEurRate}
               results={results}
@@ -748,10 +452,19 @@ const Calculator = () => {
         usdPerEurRate={usdPerEurRate}
         containerType={containerType}
         onRecalculate={handleRecalculate}
-        onScenarioChange={setScenarioTracked}
+        onScenarioChange={setScenario}
       />
 
-      <BottomSheet open={isRatesSheetOpen} onOpenChange={setIsRatesSheetOpen}>
+      <BottomSheet
+        open={isRatesSheetOpen}
+        onOpenChange={setIsRatesSheetOpen}
+        ariaTitle={language === "ru" ? "Настройки курсов" : "Exchange rate settings"}
+        ariaDescription={
+          language === "ru"
+            ? "Обновление и ввод курсов валют для расчета"
+            : "Update or enter exchange rates for the calculation"
+        }
+      >
         <BottomSheetHeader className="flex items-center justify-between pb-3">
           <div>
             <p className="text-xs text-muted-foreground">{t.ratesSheetTitle}</p>
@@ -775,20 +488,20 @@ const Calculator = () => {
             <CurrencyRatesSection
               language={language}
               autoUpdateFX={autoUpdateFX}
-              setAutoUpdateFX={setAutoUpdateFXTracked}
+              setAutoUpdateFX={setAutoUpdateFX}
               isLoadingRates={isLoadingRates}
               onRefreshRates={handleFetchRates}
               krwPerUsdRate={krwPerUsdRate}
-              setKrwPerUsdRate={setKrwPerUsdRateTracked}
+              setKrwPerUsdRate={setKrwPerUsdRate}
               usdPerEurRate={usdPerEurRate}
-              setUsdPerEurRate={setUsdPerEurRateTracked}
+              setUsdPerEurRate={setUsdPerEurRate}
               lastUpdatedAt={lastUpdatedAt}
               lastValidRates={lastValidRates}
               onRevertToLastValid={() => {
                 if (lastValidRates) {
                   fxUpdateSourceRef.current = "restored";
-                  setKrwPerUsdRateTracked(lastValidRates.krwPerUsd);
-                  setUsdPerEurRateTracked(lastValidRates.usdPerEur);
+                  setKrwPerUsdRate(lastValidRates.krwPerUsd);
+                  setUsdPerEurRate(lastValidRates.usdPerEur);
                 }
               }}
             />

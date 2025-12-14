@@ -1,13 +1,13 @@
+import { forwardRef, useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ThemeToggleProps {
   className?: string;
 }
 
-const ThemeToggle = ({ className }: ThemeToggleProps) => {
+const ThemeToggle = forwardRef<HTMLButtonElement, ThemeToggleProps>(({ className }, ref) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
@@ -40,6 +40,7 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
 
   return (
     <Button
+      ref={ref}
       variant="outline"
       size="icon"
       onClick={toggleTheme}
@@ -53,6 +54,8 @@ const ThemeToggle = ({ className }: ThemeToggleProps) => {
       )}
     </Button>
   );
-};
+});
+
+ThemeToggle.displayName = "ThemeToggle";
 
 export default ThemeToggle;
