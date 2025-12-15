@@ -8,37 +8,13 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { getContainerConfig } from "@/lib/carImport";
-import type { Language } from "@/types/language";
 import {
   MAX_HOMOLOGATION_EUR,
   MAX_MISC_EUR,
   MAX_TRANSLATION_PAGES,
 } from "./state";
-
-interface VehicleDetailsSectionProps {
-  language: Language;
-  scenario: "physical" | "company";
-  setScenario: (value: "physical" | "company") => void;
-  numberOfCars: number;
-  setNumberOfCars: (value: number) => void;
-  containerType: "20ft" | "40ft";
-  setContainerType: (value: "20ft" | "40ft") => void;
-  freightPerCar: number;
-  freightPerContainerEUR: number;
-  customsDuty: number;
-  setCustomsDuty: (value: number) => void;
-  vat: number;
-  setVat: (value: number) => void;
-  speditorFee: number;
-  homologationFee: number;
-  setHomologationFee: (value: number) => void;
-  translationPages: number;
-  setTranslationPages: (value: number) => void;
-  translationPerCar: number;
-  portAgentFeePerCar: number;
-  miscellaneous: number;
-  setMiscellaneous: (value: number) => void;
-}
+import { useCalculatorContext } from "./CalculatorContext";
+import type { Language } from "@/types/language";
 
 const copy: Record<
   Language,
@@ -126,30 +102,29 @@ const copy: Record<
   },
 };
 
-export const VehicleDetailsSection = ({
-  language,
-  scenario,
-  setScenario,
-  numberOfCars,
-  setNumberOfCars,
-  containerType,
-  setContainerType,
-  freightPerCar,
-  freightPerContainerEUR,
-  customsDuty,
-  setCustomsDuty,
-  vat,
-  setVat,
-  speditorFee,
-  homologationFee,
-  setHomologationFee,
-  translationPages,
-  setTranslationPages,
-  translationPerCar,
-  portAgentFeePerCar,
-  miscellaneous,
-  setMiscellaneous,
-}: VehicleDetailsSectionProps) => {
+export const VehicleDetailsSection = () => {
+  const {
+    language,
+    state: {
+      scenario,
+      numberOfCars,
+      containerType,
+      customsDuty,
+      vat,
+      homologationFee,
+      translationPages,
+      miscellaneous,
+    },
+    results,
+    setScenario,
+    setNumberOfCars,
+    setContainerType,
+    setCustomsDuty,
+    setVat,
+    setHomologationFee,
+    setTranslationPages,
+    setMiscellaneous,
+  } = useCalculatorContext();
   const t = copy[language];
   const [showAdvanced, setShowAdvanced] = useState(false);
   const parseNumber = (value: string) => Number(value.replace(",", "."));
@@ -161,6 +136,10 @@ export const VehicleDetailsSection = ({
       .replace(/\u00A0/g, " ");
   
   const containerInfo = getContainerConfig(containerType);
+  const freightPerCar = results.freightPerCar;
+  const translationPerCar = results.translationPerCar;
+  const portAgentFeePerCar = results.portAgentFeePerCar;
+  const speditorFee = results.speditorFee;
 
   const customsInvalid = customsDuty < 0 || customsDuty > 30;
   const vatInvalid = vat < 0 || vat > 25;

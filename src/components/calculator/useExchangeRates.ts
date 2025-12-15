@@ -6,7 +6,7 @@ import type { Language } from "@/types/language";
 
 export type FxSource = "live" | "fallback" | "manual" | "restored";
 
-interface FxCopy {
+export interface FxCopy {
   ratesFallbackTitle: string;
   ratesUpdatedTitle: string;
   ratesFallbackDescription: string;

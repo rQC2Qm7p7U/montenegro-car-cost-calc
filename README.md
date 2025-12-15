@@ -33,6 +33,12 @@ Open the printed local URL (typically http://localhost:5173) to use the calculat
 - `npm run lint` – lint the codebase with ESLint.
 - `npm run test` – run the Vitest suite.
 
+## Tests
+- Unit tests live under `src/**/__tests__` or alongside modules (e.g., `useExchangeRates.test.ts`, `state.test.ts`, `carImport.test.ts`).
+- Run all tests: `npm run test`
+- Run a subset: `npm run test -- --run src/components/calculator/useExchangeRates.test.ts`
+- Vitest is configured with jsdom and `@` alias via `vitest.config.ts`; a shared setup in `vitest.setup.ts` stubs `localStorage` for consistency.
+
 ## Domain Logic & Key Files
 - `src/lib/carImport.ts` – core cost model: freight by container type, port agent fees, CIF/customs/VAT math, per-car rollups.
 - `src/components/Calculator.tsx` – main UI state machine, FX handling, persistence, and section composition.

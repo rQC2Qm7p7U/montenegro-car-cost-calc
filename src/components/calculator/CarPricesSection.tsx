@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState, type SetStateAction } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,20 +6,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Copy, Info, Car, CheckCircle2 } from "lucide-react";
-import { formatKRW, parseKRWInput, convertKRWToEUR, formatEUR } from "@/utils/currency";
-import type { CalculationResults } from "@/types/calculator";
+import { formatKRW, parseKRWInput, formatEUR } from "@/utils/currency";
 import type { Language } from "@/types/language";
-import { MAX_CAR_PRICE_EUR } from "./state";
-
-interface CarPricesSectionProps {
-  language: Language;
-  numberOfCars: number;
-  carPrices: number[];
-  setCarPrices: (value: SetStateAction<number[]>, options?: { skipDirty?: boolean }) => void;
-  krwPerUsdRate: number;
-  usdPerEurRate: number;
-  results: CalculationResults;
-}
+import { useCalculatorContext } from "./CalculatorContext";
+import { useCarPricesForm } from "./useCarPricesForm";
 
 const copy: Record<
   Language,
@@ -75,217 +64,128 @@ const copy: Record<
   },
 };
 
+type CopyEntry = (typeof copy)["en"];
+
 type CurrencyMode = "eur" | "krw";
 
-const clampNonNegative = (value: number) =>
-  !Number.isFinite(value) || value < 0 ? 0 : value;
-
-const clampPrice = (value: number) =>
-  Math.min(MAX_CAR_PRICE_EUR, clampNonNegative(value));
-
-const formatEuroInput = (value: number) =>
-  new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
-    .format(value)
-    .replace(/\u00A0/g, " ");
-
-const computeEurFromKrwInput = (
-  input: string,
-  krwPerUsdRate: number,
-  usdPerEurRate: number,
-  raw: boolean,
-) => {
-  const parsedKRW = parseKRWInput(input);
-  const actualKRW = raw ? parsedKRW : parsedKRW * 10000;
-  return clampPrice(convertKRWToEUR(actualKRW, krwPerUsdRate, usdPerEurRate));
-};
-
-const formatKrwFromEur = (eur: number, krwPerUsdRate: number, usdPerEurRate: number, raw: boolean) => {
-  if (!eur || !Number.isFinite(krwPerUsdRate) || krwPerUsdRate <= 0 || usdPerEurRate <= 0) return "";
-  const krw = eur * usdPerEurRate * krwPerUsdRate;
-  const display = raw ? krw : krw / 10000;
-  return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
-    .format(display)
-    .replace(/\u00A0/g, " ");
-};
-
-export const CarPricesSection = ({
-  language,
-  numberOfCars,
-  carPrices,
-  setCarPrices,
-  krwPerUsdRate,
-  usdPerEurRate,
-  results,
-}: CarPricesSectionProps) => {
-  const t = copy[language];
-  const [currencyMode, setCurrencyMode] = useState<CurrencyMode>("eur");
-  const [rawKRWMode, setRawKRWMode] = useState(false);
-  const [krwInputValues, setKrwInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
-  const [eurInputValues, setEurInputValues] = useState<string[]>(Array(numberOfCars).fill(""));
-  const debounceTimersRef = useRef<Record<number, ReturnType<typeof setTimeout> | undefined>>({});
-  const prevKrwRateRef = useRef(krwPerUsdRate);
-  const prevUsdRateRef = useRef(usdPerEurRate);
-  const prevRawModeRef = useRef(rawKRWMode);
-
-  const updateCarPriceDebounced = (index: number, value: number) => {
-    const timers = debounceTimersRef.current;
-    if (timers[index]) {
-      clearTimeout(timers[index]);
-    }
-    timers[index] = setTimeout(() => {
-      setCarPrices((prev) => {
-        const next = [...prev];
-        next[index] = value;
-        return next;
-      });
-    }, 150);
+const CarPriceRow = ({
+  index,
+  currencyMode,
+  rawKRWMode,
+  eurValue,
+  krwValue,
+  carPrice,
+  t,
+  onEURChange,
+  onKRWChange,
+  preview,
+}: {
+  index: number;
+  currencyMode: "eur" | "krw";
+  rawKRWMode: boolean;
+  eurValue: string;
+  krwValue: string;
+  carPrice: number;
+  t: CopyEntry;
+  onEURChange: (value: string) => void;
+  onKRWChange: (value: string) => void;
+  preview?: {
+    finalCost: number;
   };
+}) => {
+  const hasPrice = carPrice > 0;
+  return (
+    <div
+      className={`relative p-3 rounded-lg border transition-all duration-200 ${
+        hasPrice
+          ? "bg-primary/5 border-primary/20"
+          : "bg-muted/30 border-border/50 hover:border-border"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <Label htmlFor={`carPrice${index}`} className="text-sm font-medium flex items-center gap-2">
+          {t.carLabel(index + 1)}
+          {hasPrice && <CheckCircle2 className="w-4 h-4 text-primary" />}
+        </Label>
+        <span className="text-xs text-muted-foreground">
+          {currencyMode === "eur" ? "€" : rawKRWMode ? "KRW" : "만원"}
+        </span>
+      </div>
 
-  const handlePriceChange = (index: number, value: string) => {
-    const digitsOnly = value.replace(/[^\d]/g, "");
-    const intValue = digitsOnly === "" ? 0 : Math.trunc(Number(digitsOnly));
-    const safeValue = clampPrice(intValue);
-
-    setEurInputValues((prev) => {
-      const next = [...prev];
-      next[index] = digitsOnly === "" ? "" : formatEuroInput(safeValue);
-      return next;
-    });
-
-    updateCarPriceDebounced(index, digitsOnly === "" ? 0 : safeValue);
-  };
-
-  const handleKRWChange = (index: number, value: string) => {
-    const cleaned = value.replace(/[^\d.,\s]/g, "");
-    setKrwInputValues((prev) => {
-      const next = [...prev];
-      next[index] = cleaned;
-      return next;
-    });
-
-    const eurValue = computeEurFromKrwInput(cleaned, krwPerUsdRate, usdPerEurRate, rawKRWMode);
-    updateCarPriceDebounced(index, eurValue);
-    setEurInputValues((prev) => {
-      const next = [...prev];
-      next[index] = eurValue ? formatEuroInput(eurValue) : "";
-      return next;
-    });
-  };
-
-  const setAllToSamePrice = () => {
-    if (currencyMode === "krw") {
-      const baseKrwString = krwInputValues[0] ?? "";
-      const eurFromKrw = baseKrwString
-        ? computeEurFromKrwInput(baseKrwString, krwPerUsdRate, usdPerEurRate, rawKRWMode)
-        : clampPrice(carPrices[0] ?? 0);
-      const eurDisplay = eurFromKrw ? formatEuroInput(eurFromKrw) : "";
-      const krwDisplay =
-        baseKrwString || formatKrwFromEur(eurFromKrw, krwPerUsdRate, usdPerEurRate, rawKRWMode);
-
-      setCarPrices(Array(numberOfCars).fill(eurFromKrw));
-      setEurInputValues(Array(numberOfCars).fill(eurDisplay));
-      setKrwInputValues(Array(numberOfCars).fill(krwDisplay));
-      return;
-    }
-
-    const baseEur = clampPrice(carPrices[0] ?? 0);
-    const eurDisplay = baseEur ? formatEuroInput(baseEur) : "";
-    const krwDisplay = formatKrwFromEur(baseEur, krwPerUsdRate, usdPerEurRate, rawKRWMode);
-
-    setCarPrices(Array(numberOfCars).fill(baseEur));
-    setEurInputValues(Array(numberOfCars).fill(eurDisplay));
-    setKrwInputValues(Array(numberOfCars).fill(krwDisplay));
-  };
-
-  const completedCount = carPrices.filter(p => p > 0).length;
-  const carResultByIndex = new Map(results.carResults.map((car) => [car.carIndex - 1, car]));
-
-  // Keep KRW inputs in sync with car count
-  useEffect(() => {
-    setEurInputValues((prev) => {
-      if (prev.length < numberOfCars) {
-        return [...prev, ...Array(numberOfCars - prev.length).fill("")];
-      }
-      if (prev.length > numberOfCars) {
-        return prev.slice(0, numberOfCars);
-      }
-      return prev;
-    });
-
-    setKrwInputValues((prev) => {
-      if (prev.length < numberOfCars) {
-        return [...prev, ...Array(numberOfCars - prev.length).fill("")];
-      }
-      if (prev.length > numberOfCars) {
-        return prev.slice(0, numberOfCars);
-      }
-      return prev;
-    });
-  }, [numberOfCars]);
-
-  // Keep EUR inputs in sync when values change externally (e.g., hydration)
-  useEffect(() => {
-    setEurInputValues((prev) => {
-      const next = [...prev];
-      for (let i = 0; i < numberOfCars; i += 1) {
-        if (carPrices[i] > 0 && (!next[i] || next[i] === "0")) {
-          next[i] = formatEuroInput(carPrices[i]);
-        }
-      }
-      return next.slice(0, numberOfCars);
-    });
-  }, [carPrices, numberOfCars]);
-
-  // Sync KRW inputs when switching to KRW mode or when rates/raw mode change
-  useEffect(() => {
-    if (currencyMode !== "krw") return;
-    setKrwInputValues((prev) => {
-      const next = [...prev];
-      for (let i = 0; i < numberOfCars; i += 1) {
-        next[i] =
-          carPrices[i] > 0
-            ? formatKrwFromEur(carPrices[i], krwPerUsdRate, usdPerEurRate, rawKRWMode)
-            : "";
-      }
-      return next.slice(0, numberOfCars);
-    });
-  }, [carPrices, currencyMode, krwPerUsdRate, numberOfCars, rawKRWMode, usdPerEurRate]);
-
-  // Recalculate EUR prices when KRW rate or input mode changes
-  useEffect(() => {
-    const rateChanged = prevKrwRateRef.current !== krwPerUsdRate;
-    const usdRateChanged = prevUsdRateRef.current !== usdPerEurRate;
-    const rawChanged = prevRawModeRef.current !== rawKRWMode;
-    prevKrwRateRef.current = krwPerUsdRate;
-    prevUsdRateRef.current = usdPerEurRate;
-    prevRawModeRef.current = rawKRWMode;
-    if (!rateChanged && !rawChanged && !usdRateChanged) return;
-    if (!krwInputValues.some(Boolean)) return;
-
-    const updatedPrices = [...carPrices];
-    const updatedEurInputs = [...eurInputValues];
-
-    krwInputValues.forEach((value, index) => {
-      if (!value) return;
-      const eurValue = computeEurFromKrwInput(value, krwPerUsdRate, usdPerEurRate, rawKRWMode);
-      updatedPrices[index] = eurValue;
-      updatedEurInputs[index] = eurValue ? formatEuroInput(eurValue) : "";
-    });
-
-    setCarPrices(updatedPrices, { skipDirty: true });
-    setEurInputValues(updatedEurInputs);
-  }, [carPrices, eurInputValues, krwInputValues, krwPerUsdRate, rawKRWMode, setCarPrices, usdPerEurRate]);
-
-  useEffect(
-    () => () => {
-      Object.values(debounceTimersRef.current).forEach((timer) => {
-        if (timer) {
-          clearTimeout(timer);
-        }
-      });
-    },
-    [],
+      {currencyMode === "eur" ? (
+        <>
+          <Input
+            id={`carPrice${index}`}
+            type="text"
+            inputMode="numeric"
+            value={eurValue}
+            onChange={(e) => onEURChange(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            placeholder={t.eurPlaceholder}
+            className="input-focus-ring bg-background/50"
+          />
+          {preview && preview.finalCost > 0 && (
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
+            </p>
+          )}
+        </>
+      ) : (
+        <div className="space-y-2">
+          <Input
+            id={`carPrice${index}`}
+            type="text"
+            value={krwValue}
+            onChange={(e) => onKRWChange(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            placeholder={rawKRWMode ? t.krwRawPlaceholder : t.krwPlaceholder}
+            className="input-focus-ring bg-background/50"
+          />
+          {krwValue && parseKRWInput(krwValue) > 0 && (
+            <>
+              <div className="flex items-center justify-between text-xs px-1">
+                <span className="text-muted-foreground">
+                  {formatKRW(
+                    rawKRWMode ? parseKRWInput(krwValue) : parseKRWInput(krwValue) * 10000,
+                  )}{" "}
+                  KRW
+                </span>
+                <span className="text-primary font-semibold">
+                  ≈ €{formatEUR(carPrice)}
+                </span>
+              </div>
+              {preview && preview.finalCost > 0 && (
+                <p className="text-[11px] text-muted-foreground px-1">
+                  ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
+};
+
+export const CarPricesSection = () => {
+  const { language } = useCalculatorContext();
+  const t: CopyEntry = copy[language];
+  const {
+    numberOfCars,
+    carPrices,
+    currencyMode,
+    setCurrencyMode,
+    rawKRWMode,
+    setRawKRWMode,
+    krwInputValues,
+    eurInputValues,
+    handlePriceChange,
+    handleKRWChange,
+    setAllToSamePrice,
+    completedCount,
+    carResultByIndex,
+    results,
+  } = useCarPricesForm();
 
   return (
     <Card className="p-5 shadow-card transition-smooth hover:shadow-hover animate-fade-in glass-card" style={{ animationDelay: "0.15s" }}>
@@ -366,79 +266,21 @@ export const CarPricesSection = ({
 
       <div className="space-y-3">
         {Array.from({ length: numberOfCars }).map((_, index) => {
-          const hasPrice = carPrices[index] > 0;
           const preview = carResultByIndex.get(index);
-          
           return (
-            <div 
-              key={index} 
-              className={`relative p-3 rounded-lg border transition-all duration-200 ${
-                hasPrice 
-                  ? 'bg-primary/5 border-primary/20' 
-                  : 'bg-muted/30 border-border/50 hover:border-border'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <Label htmlFor={`carPrice${index}`} className="text-sm font-medium flex items-center gap-2">
-                  {t.carLabel(index + 1)}
-                  {hasPrice && (
-                    <CheckCircle2 className="w-4 h-4 text-primary" />
-                  )}
-                </Label>
-                <span className="text-xs text-muted-foreground">
-                  {currencyMode === "eur" ? "€" : rawKRWMode ? "KRW" : "만원"}
-                </span>
-              </div>
-              
-              {currencyMode === "eur" ? (
-                <>
-                  <Input
-                    id={`carPrice${index}`}
-                    type="text"
-                    inputMode="numeric"
-                    value={eurInputValues[index] ?? ""}
-                    onChange={(e) => handlePriceChange(index, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    placeholder={t.eurPlaceholder}
-                    className="input-focus-ring bg-background/50"
-                  />
-                  {preview && preview.carPrice > 0 && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
-                    </p>
-                  )}
-                </>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    id={`carPrice${index}`}
-                    type="text"
-                    value={krwInputValues[index] || ""}
-                    onChange={(e) => handleKRWChange(index, e.target.value)}
-                    onFocus={(e) => e.target.select()}
-                    placeholder={rawKRWMode ? t.krwRawPlaceholder : t.krwPlaceholder}
-                    className="input-focus-ring bg-background/50"
-                  />
-                  {krwInputValues[index] && parseKRWInput(krwInputValues[index]) > 0 && (
-                    <>
-                      <div className="flex items-center justify-between text-xs px-1">
-                        <span className="text-muted-foreground">
-                          {formatKRW(rawKRWMode ? parseKRWInput(krwInputValues[index]) : parseKRWInput(krwInputValues[index]) * 10000)} KRW
-                        </span>
-                        <span className="text-primary font-semibold">
-                          ≈ €{formatEUR(carPrices[index])}
-                        </span>
-                      </div>
-                      {preview && preview.carPrice > 0 && (
-                        <p className="text-[11px] text-muted-foreground px-1">
-                          ≈ €{formatEUR(preview.finalCost)} {t.approxWithTaxes}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <CarPriceRow
+              key={index}
+              index={index}
+              currencyMode={currencyMode}
+              rawKRWMode={rawKRWMode}
+              eurValue={eurInputValues[index] ?? ""}
+              krwValue={krwInputValues[index] || ""}
+              carPrice={carPrices[index] ?? 0}
+              t={t}
+              onEURChange={(value) => handlePriceChange(index, value)}
+              onKRWChange={(value) => handleKRWChange(index, value)}
+              preview={preview}
+            />
           );
         })}
       </div>
